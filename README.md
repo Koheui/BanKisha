@@ -1,157 +1,128 @@
 # BanKisha
-**BanKisha（番記者）** は、音声インタビュー型のPR記事生成プラットフォームです。  
-企業はスマホやPCから質問に答えるだけで、**取材記事スタイルの記事**が自動生成されます。  
-記事は編集部が承認して公開され、同時にSNS要約（X・LinkedIn）も作成されます。  
-公開後は企業ごとに **「番記者」ダッシュボード** が利用可能になり、継続的にニュースを発信できます。
 
----
+音声インタビュー型のPR TIMES を実現。企業はスマホまたはPCから質問に答えるだけで、取材記事スタイルの記事が生成される。
 
-## 🎯 ゴール
-- 音声インタビュー型の「PR TIMES」体験を提供  
-- 企業は **音声またはテキスト回答**するだけで記事化  
-- **取材記事スタイル固定**（自薦不可）  
-- 公開はメディア編集部が承認して実行  
-- 公開後に企業アカウントが有効化され、「番記者」が常駐  
+## 概要
 
----
+### ゴール
+企業がスマホまたはPCから質問に答えるだけで、取材記事スタイルの記事が生成されるシステム。「音声インタビュー型のPR TIMES」を実現します。
 
-## 🛠 技術スタック
-- フロントエンド: **Next.js (App Router) + TypeScript + Tailwind + Shadcn UI**  
-- 認証: **Firebase Auth**  
-- データベース: **Firestore**  
-- ストレージ: **Firebase Storage**  
-- サーバー処理: **Firebase Functions (Node18)**  
-- AI連携:  
-  - **Whisper API**（音声→テキスト変換）  
-  - **GPT-4/5**（記事化・SNS要約）  
-  - **OpenAI TTS**（質問読み上げ）  
-- 企業情報: **Airtable**（基本情報マスター）  
+### 技術スタック
+- フロント: Next.js (App Router) + TypeScript + Tailwind + Shadcn UI
+- 認証: Firebase Auth
+- DB/Storage: Firestore / Storage
+- サーバー処理: Firebase Functions (Node18)
+- AI: Whisper API（音声→テキスト変換）、GPT-4/5（記事化、SNS要約生成）、OpenAI TTS（質問読み上げ、番記者の声）
 
----
+### ユーザーロール
+- admin（編集部）: 全記事の承認・公開権限、全企業の管理権限
+- company（企業ユーザー）: 自社記事の作成・編集・申請（公開は不可）
 
-## 👥 ユーザーロール
-- **Admin（編集部）**  
-  - 全記事の承認・公開権限  
-  - 全企業の管理権限  
-- **Company（企業ユーザー）**  
-  - 自社記事の作成・編集・申請（公開は不可）  
-  - 他社記事は公開ページとして閲覧のみ  
+### 画面構成
+- `/` → 記事一覧（status=public）にリダイレクト
+- `/articles` → 記事一覧ページ
+- `/articles/[id]` → 記事詳細ページ（発行元メディアバッジ付き）
+- `/invite/[sessionId]` → 招待取材ページ（TTS＋録音UI）
+- `/login` → ログインページ
+- `/signup` → 新規登録ページ
+- `/dashboard` → ダッシュボード（企業：自社記事管理、管理者：承認・公開）
 
----
+## セットアップ
 
-## 🎤 回答体験（スマホ・PC対応）
-- **ウィザード形式の質問UI**  
-- 回答方法:  
-  1. 🎤 音声録音（最大3分、自動停止）  
-  2. ⌨️ テキスト入力（音声利用不可環境用）  
-- 録音後は即アップロード（自動送信）  
-- 全質問完了後に記事ドラフトが生成される  
+### 1. 環境変数設定
+```bash
+cp env.example .env.local
+```
 
-### スマホUI
-- 録音ボタンを大きく表示  
-- 残り時間カウントダウン  
-- 送信完了時にトースト通知  
+`.env.local`に以下を設定：
+```bash
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key_here
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
+NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef123456
 
-### PC UI
-- 2カラム構成  
-- 左: 質問・回答UI  
-- 右: 録音プレビュー（再生確認）  
+# OpenAI Configuration
+OPENAI_API_KEY=sk-your_openai_api_key_here
 
----
+# Firebase Admin SDK
+FIREBASE_ADMIN_PROJECT_ID=your_project_id
+FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+FIREBASE_ADMIN_CLIENT_EMAIL=firebase-adminsdk-xxx@your_project.iam.gserviceaccount.com
 
-## ✅ フロー
-1. **サインアップ**  
-   - 招待URL `/invite/[sessionId]` 発行  
-   - 初回質問（会社名、設立経緯、サービス、差別化、今後の計画）  
+# Application Settings
+NEXT_PUBLIC_MEDIA_BRAND_NAME=BanKisha
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
 
-2. **取材回答**  
-   - 番記者キャラがTTSで質問を読み上げ  
-   - 音声録音（最大3分/問）またはテキスト入力で回答  
+### 2. Firebase プロジェクト設定
+1. Firebase プロジェクトを作成
+2. Authentication を有効化 (Email/Password)
+3. Firestore Database を有効化
+4. Storage を有効化
+5. Functions を有効化 (Node.js 18)
 
-3. **記事化**  
-   - 音声 → Storage保存 → Whisper API → transcript化  
-   - GPTが **取材記事スタイル** で `draftArticle` を生成  
-   - 同時にSNS要約（X, LinkedIn）を生成  
+### 3. 依存関係インストール
+```bash
+# メインプロジェクト
+npm install
 
-4. **承認フロー**  
-   - 企業ユーザー: 自社記事を修正・申請  
-   - 管理者: 承認して公開  
-   - 初回公開後に企業のダッシュボード有効化  
+# Firebase Functions
+cd functions
+npm install
+cd ..
+```
 
-5. **公開**  
-   - `/articles/[id]` にて記事公開（発行元メディアバッジ付き）  
-   - SNS要約をAPI経由で投稿  
+### 4. Firebaseエミュレーター起動（開発環境）
+```bash
+npm run firebase:emulator
+```
 
----
+### 5. アプリケーション起動
+```bash
+npm run dev
+```
 
-## 📺 画面構成
-- `/` : 記事一覧（status=public）  
-- `/articles/[id]` : 記事詳細（発行元バッジ表示）  
-- `/invite/[sessionId]` : 招待取材ページ（TTS＋録音UI）  
-- `/login` : ログインページ  
-- `/dashboard`  
-  - Company: 自社記事一覧・編集・申請、新規取材依頼  
-  - Admin: 全記事一覧、承認・公開操作  
+## 現在の実装状況
 
----
+### ✅ 完了済み
+- [x] Firebase初期化（Auth/Firestore/Storage/Functions）
+- [x] Next.js + TypeScript + Tailwind + Shadcn UI の初期セットアップ
+- [x] 公開記事ページ（一覧＋詳細）の実装
+- [x] 基本的な認証システム（ログイン・新規登録）
+- [x] Firebase Functions設定（GPT記事化、Whisper文字化）
 
-## 📣 プロンプト例
-### 記事化
-system:
-あなたはプロの編集者です。以下のQ&A逐語録を基に、
-「取材記事スタイル」で記事を生成してください。
-自薦は禁止。必ず「◯◯社◯◯氏に伺った」といった体裁にしてください。
+### 🚧 開発中
+- [ ] Firestoreデータベース構造の実装
+- [ ] 招待取材ページ（TTS読み上げ＋録音UI）
+- [ ] Whisper API連携（録音→テキスト変換）
+- [ ] GPT記事化＋SNS要約生成
+- [ ] ダッシュボード（企業：自社記事編集/管理者：承認・公開）
+- [ ] AI番記者機能の実装
 
-出力:
+## フロー
 
-title(38字以内)
+### 1. 企業登録
+1. `invite/[sessionId]` URLで招待
+2. 初回質問セット（会社名・設立経緯・サービス・差別化・今後の計画）
+3. 音声またはテキストで回答
 
-lead(200字以内)
+### 2. 記事生成
+1. 音声 → Storage保存 → Whisper APIで文字化
+2. GPTで 取材記事スタイル の draftArticle を生成
+3. 同時にSNS要約（X, LinkedIn）も生成
 
-body(見出し3-4＋本文, Markdown)
+### 3. 承認フロー
+1. 企業ユーザー：自社記事を修正し submitted に変更
+2. 管理者：承認して approved → public
+3. 初回公開と同時に companies.onboarded = true
 
-記事末尾: 発行元 {MEDIA_BRAND_NAME}
+### 4. 公開
+1. `/articles/[id]` で公開記事表示（発行元バッジ付き）
+2. SNS要約をAPI連携で投稿
 
-shell
-コードをコピーする
+## ライセンス
 
-### SNS要約
-system:
-あなたは広報担当です。以下の記事からSNS投稿文を作成してください。
-必ず「本メディアが取材した」という体裁にしてください。
-
-出力:
-
-X: 140字以内
-
-LinkedIn: 300字以内
-共通末尾: 発行元 {MEDIA_BRAND_NAME}
-
-yaml
-コードをコピーする
-
----
-
-## 🚀 MVPロードマップ
-1. Firebase 初期化（Auth/Firestore/Storage/Functions）  
-2. 招待取材ページ（録音・TTS質問・3分制限）  
-3. Whisper トリガーで transcript 保存  
-4. GPT 記事ドラフト＋SNS要約生成  
-5. ダッシュボード（企業: 編集/申請、管理者: 承認/公開）  
-6. 公開記事ページ（一覧＋詳細）  
-7. 発行元メディアバッジ表示  
-
----
-
-## 🎁 将来拡張
-- ダッシュボードに **AI番記者常駐UI**  
-- キャラクターの声・見た目を選択可能  
-- 記事末尾に「取材日」「担当番記者」表記  
-- サブスク課金（Stripe連携）で記事発行枠を提供  
-
----
-
-## 📌 ライセンス
-未定（MVP段階）
-
----
+MIT License
