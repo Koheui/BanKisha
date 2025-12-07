@@ -93,3 +93,36 @@ export interface AudioRecorderState {
   currentTime: number
   error: string | null
 }
+
+export interface KnowledgeBase {
+  id: string
+  title: string
+  description?: string
+  pdfUrl: string
+  fileSize: number
+  pageCount: number
+  status: 'processing' | 'completed' | 'error'
+  processedAt?: Date
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface KnowledgeChunk {
+  id: string
+  knowledgeBaseId: string
+  pageNumber: number
+  chunkIndex: number
+  text: string
+  embedding?: number[]
+  metadata?: {
+    section?: string
+    topic?: string
+  }
+  createdAt: Date
+}
+
+export interface KnowledgeSearchResult {
+  chunk: KnowledgeChunk
+  score: number
+  text: string
+}

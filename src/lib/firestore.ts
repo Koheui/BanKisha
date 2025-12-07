@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from './firebase'
-import type { User, Company, QuestionSet, Article, Session, QARecord } from '../types'
+import type { User, Company, QuestionSet, Article, Session, QARecord, KnowledgeBase } from '../types'
 
 // Users Collection
 export const usersCollection = collection(db, 'users')
@@ -136,4 +136,32 @@ export const uploadAudioFile = async (file: File, path: string): Promise<string>
 export const deleteAudioFile = async (path: string): Promise<void> => {
   const storageRef = ref(storage, path)
   await deleteObject(storageRef)
+}
+
+// Knowledge Bases Collection
+export const knowledgeBasesCollection = collection(db, 'knowledgeBases')
+export const getKnowledgeBases = async (): Promise<KnowledgeBase[]> => {
+  const q = query(knowledgeBasesCollection, orderBy('createdAt', 'desc'))
+  const querySnapshot = await getDocs(q)
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate() || new Date(),
+    updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+    processedAt: doc.data().processedAt?.toDate()
+  } as KnowledgeBase))
+}
+
+export const deleteKnowledgeBase = async (knowledgeBaseId: string): Promise<void> => {
+  const docRef = doc(db, 'knowledgeBases', knowledgeBaseId)
+  await deleteDoc(docRef)
+  
+  // Also delete related chunks
+  const chunksQuery = query(
+    collection(db, 'knowledgeChunks'),
+    where('knowledgeBaseId', '==', knowledgeBaseId)
+  )
+  const chunksSnapshot = await getDocs(chunksQuery)
+  const deletePromises = chunksSnapshot.docs.map(chunkDoc => deleteDoc(chunkDoc.ref))
+  await Promise.all(deletePromises)
 }

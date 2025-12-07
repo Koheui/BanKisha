@@ -40,6 +40,18 @@ service cloud.firestore {
         (resource.data.companyId == getCompanyId(request.auth.uid) || userHasRole('admin'));
     }
     
+    // Knowledge Bases - only admins can manage
+    match /knowledgeBases/{knowledgeBaseId} {
+      allow read: if request.auth != null;
+      allow write: if userHasRole('admin');
+    }
+    
+    // Knowledge Chunks - readable by all authenticated users (for search)
+    match /knowledgeChunks/{chunkId} {
+      allow read: if request.auth != null;
+      allow write: if userHasRole('admin');
+    }
+    
     // Helper functions
     function userHasRole(role) {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;

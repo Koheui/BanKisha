@@ -1,8 +1,9 @@
 import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenerativeAI, EmbedContentRequest } from '@google/generative-ai'
 import { OpenAI } from 'openai'
 import * as cors from 'cors'
+import * as pdfParse from 'pdf-parse'
 
 // Initialize Firebase Admin
 admin.initializeApp()
@@ -39,8 +40,48 @@ export const generateArticle = functions.https.onRequest(async (req, res) => {
 
       const qaText = qa.map((item: any) => `Q: ${item.q}\nA: ${item.transcript || item.textAnswer || ''}`).join('\n\n')
 
+      // Search knowledge base for article writing best practices
+      let knowledgeContext = ''
+      try {
+        const searchModel = genAI.getGenerativeModel({ model: 'embedding-001' })
+        const searchQuery = '記事執筆 取材記事 書き方 ベストプラクティス'
+        const searchResult = await searchModel.embedContent({
+          content: { parts: [{ text: searchQuery }], role: 'user' }
+        } as EmbedContentRequest)
+        
+        const searchEmbedding = searchResult.embedding.values
+        
+        // Get relevant chunks from Firestore
+        const chunksSnapshot = await admin.firestore()
+          .collection('knowledgeChunks')
+          .limit(50)
+          .get()
+
+        const results = []
+        for (const doc of chunksSnapshot.docs) {
+          const chunk = doc.data()
+          if (chunk.embedding && Array.isArray(chunk.embedding)) {
+            const similarity = cosineSimilarity(searchEmbedding, chunk.embedding)
+            if (similarity > 0.7) {
+              results.push({ text: chunk.text, score: similarity })
+            }
+          }
+        }
+
+        results.sort((a, b) => b.score - a.score)
+        if (results.length > 0) {
+          knowledgeContext = '\n\n【記事執筆のベストプラクティス（参考資料）】\n' +
+            results.slice(0, 3).map((r, i) => `${i + 1}. ${r.text}`).join('\n\n')
+        }
+      } catch (error) {
+        console.error('Error searching knowledge base for article:', error)
+        // Continue without knowledge base if search fails
+      }
+
       const articlePrompt = `あなたはプロの編集者です。以下のQ&A逐語録を基に、「取材記事スタイル」で記事を生成してください。
 自薦は禁止。必ず「◯◯社◯◯氏に伺った」といった体裁にしてください。
+
+${knowledgeContext ? '参考資料の記事執筆のベストプラクティスを活用して、より質の高い記事を作成してください。' : ''}
 
 QA:
 ${qaText}
@@ -215,6 +256,210 @@ export const onCreateUser = functions.auth.user().onCreate(async (user) => {
     console.error('Error creating user document:', error)
   }
 })
+
+/**
+ * Process PDF and create knowledge base chunks
+ */
+export const processKnowledgeBasePDF = functions.https.onRequest(async (req, res) => {
+  corsHandler(req, res, async () => {
+    try {
+      if (req.method !== 'POST') {
+        res.status(405).send('Method Not Allowed')
+        return
+      }
+
+      const { pdfUrl, knowledgeBaseId, title } = req.body
+
+      if (!pdfUrl || !knowledgeBaseId) {
+        res.status(400).send('PDF URL and knowledge base ID are required')
+        return
+      }
+
+      // Download PDF
+      const pdfResponse = await fetch(pdfUrl)
+      const pdfBuffer = await pdfResponse.arrayBuffer()
+      
+      // Parse PDF
+      const pdfData = await pdfParse(Buffer.from(pdfBuffer))
+      const text = pdfData.text
+      const pageCount = pdfData.numpages
+
+      // Split text into chunks (approximately 500 characters per chunk)
+      const chunkSize = 500
+      const chunks: string[] = []
+      const lines = text.split('\n')
+      let currentChunk = ''
+
+      for (const line of lines) {
+        if (currentChunk.length + line.length > chunkSize && currentChunk.length > 0) {
+          chunks.push(currentChunk.trim())
+          currentChunk = line + ' '
+        } else {
+          currentChunk += line + ' '
+        }
+      }
+      if (currentChunk.trim().length > 0) {
+        chunks.push(currentChunk.trim())
+      }
+
+      // Get embedding model
+      const embeddingModel = genAI.getGenerativeModel({ model: 'embedding-001' })
+
+      // Process chunks and create embeddings
+      const batchSize = 10
+      for (let i = 0; i < chunks.length; i += batchSize) {
+        const batch = chunks.slice(i, i + batchSize)
+        
+        const embeddings = await Promise.all(
+          batch.map(async (chunk, index) => {
+            try {
+              const result = await embeddingModel.embedContent({
+                content: { parts: [{ text: chunk }], role: 'user' }
+              } as EmbedContentRequest)
+              
+              return {
+                chunk,
+                embedding: result.embedding.values,
+                chunkIndex: i + index
+              }
+            } catch (error) {
+              console.error(`Error creating embedding for chunk ${i + index}:`, error)
+              return null
+            }
+          })
+        )
+
+        // Save chunks to Firestore
+        const firestoreBatch = admin.firestore().batch()
+        embeddings.forEach((emb, index) => {
+          if (emb) {
+            const chunkRef = admin.firestore()
+              .collection('knowledgeChunks')
+              .doc()
+            
+            firestoreBatch.set(chunkRef, {
+              knowledgeBaseId,
+              chunkIndex: i + index,
+              text: emb.chunk,
+              embedding: emb.embedding,
+              createdAt: admin.firestore.FieldValue.serverTimestamp()
+            })
+          }
+        })
+        await firestoreBatch.commit()
+      }
+
+      // Update knowledge base status
+      await admin.firestore()
+        .collection('knowledgeBases')
+        .doc(knowledgeBaseId)
+        .update({
+          status: 'completed',
+          pageCount,
+          processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        })
+
+      res.json({
+        success: true,
+        chunksCreated: chunks.length,
+        pageCount
+      })
+
+    } catch (error) {
+      console.error('Error processing PDF:', error)
+      res.status(500).json({
+        success: false,
+        error: 'PDF処理に失敗しました'
+      })
+    }
+  })
+})
+
+/**
+ * Search knowledge base
+ */
+export const searchKnowledgeBase = functions.https.onRequest(async (req, res) => {
+  corsHandler(req, res, async () => {
+    try {
+      if (req.method !== 'POST') {
+        res.status(405).send('Method Not Allowed')
+        return
+      }
+
+      const { query, limit = 5 } = req.body
+
+      if (!query) {
+        res.status(400).send('Query is required')
+        return
+      }
+
+      // Get embedding for query
+      const embeddingModel = genAI.getGenerativeModel({ model: 'embedding-001' })
+      const queryResult = await embeddingModel.embedContent({
+        content: { parts: [{ text: query }], role: 'user' }
+      } as EmbedContentRequest)
+      
+      const queryEmbedding = queryResult.embedding.values
+
+      // Get all knowledge chunks
+      const chunksSnapshot = await admin.firestore()
+        .collection('knowledgeChunks')
+        .get()
+
+      // Calculate cosine similarity
+      const results = []
+      for (const doc of chunksSnapshot.docs) {
+        const chunk = doc.data()
+        if (chunk.embedding && Array.isArray(chunk.embedding)) {
+          const similarity = cosineSimilarity(queryEmbedding, chunk.embedding)
+          results.push({
+            id: doc.id,
+            text: chunk.text,
+            knowledgeBaseId: chunk.knowledgeBaseId,
+            chunkIndex: chunk.chunkIndex,
+            score: similarity
+          })
+        }
+      }
+
+      // Sort by score and return top results
+      results.sort((a, b) => b.score - a.score)
+      const topResults = results.slice(0, limit)
+
+      res.json({
+        success: true,
+        results: topResults
+      })
+
+    } catch (error) {
+      console.error('Error searching knowledge base:', error)
+      res.status(500).json({
+        success: false,
+        error: '検索に失敗しました'
+      })
+    }
+  })
+})
+
+// Helper function to calculate cosine similarity
+function cosineSimilarity(vecA: number[], vecB: number[]): number {
+  if (vecA.length !== vecB.length) {
+    return 0
+  }
+
+  let dotProduct = 0
+  let normA = 0
+  let normB = 0
+
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i]
+    normA += vecA[i] * vecA[i]
+    normB += vecB[i] * vecB[i]
+  }
+
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))
+}
 
 // Helper function to extract headings from markdown
 function extractHeadings(markdown: string): string[] {
