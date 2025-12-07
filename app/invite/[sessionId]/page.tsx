@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { InterviewWizard } from '@/components/interview/InterviewWizard'
+import { InterviewModeSelector } from '@/components/interview/InterviewModeSelector'
 import { Card, CardContent } from '@/components/ui/card'
 import { LoaderIcon } from 'lucide-react'
 
@@ -23,7 +23,7 @@ export default function InvitePage({ params }: InvitePageProps) {
             </CardContent>
           </Card>
         }>
-          <InterviewWizard sessionId={params.sessionId} />
+          <InterviewModeSelector sessionId={params.sessionId} />
         </Suspense>
       </div>
     </div>
