@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { useVoiceChat } from '@/src/hooks/useVoiceChat'
-import { createArticle } from '@/src/lib/firestore'
+import { getCompany, createArticle } from '@/src/lib/firestore'
 import { formatDuration } from '@/src/lib/utils'
 import {
   MicIcon,
@@ -53,6 +53,10 @@ export function VoiceChat({ sessionId, companyId, onComplete }: VoiceChatProps) 
     try {
       setIsGenerating(true)
       
+      // Get company name
+      const company = await getCompany(companyId)
+      const companyName = company?.name || '企業'
+
       // Convert conversation messages to Q&A format
       const qa = []
       for (let i = 0; i < msgs.length; i += 2) {
@@ -72,7 +76,7 @@ export function VoiceChat({ sessionId, companyId, onComplete }: VoiceChatProps) 
         },
         body: JSON.stringify({
           qa,
-          companyName: '企業名' // TODO: Get from company data
+          companyName
         }),
       })
 

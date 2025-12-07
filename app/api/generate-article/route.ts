@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { articleId, qa, companyName } = await request.json()
+    const { qa, companyName } = await request.json()
 
-    if (!articleId || !qa || !Array.isArray(qa)) {
+    if (!qa || !Array.isArray(qa)) {
       return NextResponse.json(
         { error: '必須パラメータが不足しています' },
         { status: 400 }

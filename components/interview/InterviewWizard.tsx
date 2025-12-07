@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { AudioRecorder } from './AudioRecorder'
-import { getSession, getQuestionSet, createArticle, uploadAudioFile } from '@/src/lib/firestore'
+import { getSession, getQuestionSet, getCompany, createArticle, uploadAudioFile } from '@/src/lib/firestore'
 import type { Session, QuestionSet, QARecord } from '@/src/types'
 import { 
   AlertCircleIcon, 
@@ -151,35 +151,80 @@ export function InterviewWizard({ sessionId }: InterviewWizardProps) {
         setError(`${unanswered.length}個の質問が未回答です`)
         return
       }
+
+      // Get company name for article generation
+      const company = await getCompany(session!.companyId)
+      const companyName = company?.name || '企業'
+
+      // Process audio files: transcribe if needed
+      const processedAnswers = await Promise.all(
+        answers.map(async (answer) => {
+          if (answer.audioPath && !answer.transcript) {
+            try {
+              // Transcribe audio
+              const transcribeResponse = await fetch('/api/transcribe', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ audioUrl: answer.audioPath }),
+              })
+
+              if (transcribeResponse.ok) {
+                const data = await transcribeResponse.json()
+                return {
+                  ...answer,
+                  transcript: data.transcript
+                }
+              }
+            } catch (err) {
+              console.error('Error transcribing audio:', err)
+            }
+          }
+          return answer
+        })
+      )
+
+      // Generate article from Q&A
+      const generateResponse = await fetch('/api/generate-article', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          qa: processedAnswers.map(a => ({
+            q: a.q,
+            transcript: a.transcript,
+            textAnswer: a.textAnswer
+          })),
+          companyName
+        }),
+      })
+
+      if (!generateResponse.ok) {
+        throw new Error('記事の生成に失敗しました')
+      }
+
+      const articleData = await generateResponse.json()
       
-      // Create article draft
+      // Create article with generated content
       const articleId = await createArticle({
         companyId: session!.companyId,
         status: 'draft',
         questionSetId: session!.questionSetId,
-        qa: answers,
-        draftArticle: {
-          title: '',
-          lead: '',
-          bodyMd: '',
-          headings: []
-        },
-        snsDraft: {
-          x140: '',
-          linkedin300: ''
-        },
+        qa: processedAnswers,
+        draftArticle: articleData.article,
+        snsDraft: articleData.sns,
         createdAt: new Date(),
         updatedAt: new Date()
       })
       
-      // TODO: Trigger article generation via Cloud Function
-      
-      // Redirect to success page or dashboard
+      // Redirect to success page
       router.push(`/interview/complete?articleId=${articleId}`)
       
     } catch (err) {
       console.error('Error submitting interview:', err)
-      setError('インタビューの送信に失敗しました')
+      setError(err instanceof Error ? err.message : 'インタビューの送信に失敗しました')
     } finally {
       setSubmitting(false)
     }
