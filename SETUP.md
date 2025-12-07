@@ -74,12 +74,31 @@ const firebaseConfig = {
 4. ファイル名を `service-account-key.json` に変更
 5. プロジェクトルートに配置（**注: .gitignoreに含まれています**）
 
-## 2. OpenAI API キーの取得
+## 2. AI API キーの取得
+
+### 2.1 Gemini API キーの取得（推奨・必須）
+
+1. [Google AI Studio](https://makersuite.google.com/app/apikey)にアクセス
+2. Googleアカウントでログイン
+3. 「Create API Key」をクリック
+4. キーをコピーして保存（**重要: このキーは再表示できません**）
+
+**Gemini APIの利点:**
+- 日本語処理が優秀
+- コストが安い
+- 高速なレスポンス
+- 記事生成と音声チャット会話管理に使用
+
+### 2.2 OpenAI API キーの取得（音声認識用）
 
 1. [OpenAI Platform](https://platform.openai.com/)にアクセス
 2. アカウント作成 or ログイン
 3. API Keys > Create new secret key
 4. キーをコピーして保存
+
+**OpenAI APIの用途:**
+- Whisper API（音声→テキスト変換）のみ
+- 記事生成はGeminiを使用するため、必須ではありません
 
 ## 3. プロジェクトのセットアップ
 
@@ -106,7 +125,11 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
 NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
 
-# OpenAI Configuration（2でコピーした値）
+# AI Configuration
+# Gemini API（2.1で取得した値 - 必須）
+GEMINI_API_KEY=your_gemini_api_key
+
+# OpenAI Configuration（2.2で取得した値 - 音声認識用、オプション）
 OPENAI_API_KEY=sk-your_openai_api_key
 
 # Firebase Admin SDK（1.7のJSONファイルから）
@@ -141,6 +164,10 @@ cd ..
 ### 3.5 Firebase Functions の環境変数設定
 
 ```bash
+# Gemini API（必須）
+firebase functions:config:set gemini.api_key="your_gemini_api_key"
+
+# OpenAI API（音声認識用、オプション）
 firebase functions:config:set openai.api_key="sk-your_openai_api_key"
 ```
 

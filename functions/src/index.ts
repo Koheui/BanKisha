@@ -1,5 +1,6 @@
 import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { OpenAI } from 'openai'
 import * as cors from 'cors'
 
@@ -8,7 +9,12 @@ admin.initializeApp()
 
 const corsHandler = cors({ origin: true })
 
-// Initialize OpenAI
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(
+  functions.config().gemini?.api_key || process.env.GEMINI_API_KEY || ''
+)
+
+// Initialize OpenAI (for Whisper transcription)
 const openai = new OpenAI({
   apiKey: functions.config().openai?.api_key || process.env.OPENAI_API_KEY,
 })
@@ -64,36 +70,52 @@ ${JSON.stringify(articlePrompt)}
 共通末尾に必ず以下を追加してください:
 発行元 BanKisha`
 
-      // Generate article and SNS content
-      const [articleResponse, snsResponse] = await Promise.all([
-        openai.chat.completions.create({
-          model: 'gpt-4',
-          messages: [{ role: 'user', content: articlePrompt }],
+      // Get Gemini model
+      const model = genAI.getGenerativeModel({ 
+        model: 'gemini-pro',
+        generationConfig: {
           temperature: 0.7,
-        }),
-        openai.chat.completions.create({
-          model: 'gpt-4',
-          messages: [{ role: 'user', content: snsPrompt }],
-          temperature: 0.7,
-        })
+        }
+      })
+
+      // Generate article and SNS content using Gemini
+      const [articleResult, snsResult] = await Promise.all([
+        model.generateContent(articlePrompt),
+        model.generateContent(snsPrompt)
       ])
 
       let articleContent
       let snsContent
 
       try {
-        articleContent = JSON.parse(articleResponse.choices[0]?.message?.content || '{}')
+        const articleText = articleResult.response.text()
+        // Try to extract JSON from the response
+        const jsonMatch = articleText.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          articleContent = JSON.parse(jsonMatch[0])
+        } else {
+          // Fallback: parse the entire response
+          articleContent = JSON.parse(articleText)
+        }
       } catch (e) {
         console.error('Error parsing article content:', e)
+        // Try to extract content manually
+        const articleText = articleResult.response.text()
         articleContent = {
-          title: '記事生成エラー',
-          lead: '記事の生成に失敗しました。',
-          body: '記事の生成中にエラーが発生しました。'
+          title: articleText.split('\n')[0] || '無題のインタビュー',
+          lead: articleText.split('\n').slice(1, 3).join(' ') || '記事の生成に失敗しました。',
+          body: articleText || '記事の生成中にエラーが発生しました。'
         }
       }
 
       try {
-        snsContent = JSON.parse(snsResponse.choices[0]?.message?.content || '{}')
+        const snsText = snsResult.response.text()
+        const jsonMatch = snsText.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          snsContent = JSON.parse(jsonMatch[0])
+        } else {
+          snsContent = JSON.parse(snsText)
+        }
       } catch (e) {
         console.error('Error parsing SNS content:', e)
         snsContent = {

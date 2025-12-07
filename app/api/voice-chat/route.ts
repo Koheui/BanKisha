@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+const genAI = new GoogleGenerativeAI(
+  process.env.GEMINI_API_KEY || ''
+)
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -40,24 +40,28 @@ export async function POST(request: NextRequest) {
 
 会話履歴を確認して、次に聞くべき質問を考えてください。`
 
-    // Convert messages to OpenAI format
-    const openaiMessages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
-      ...messages.map((msg: ChatMessage) => ({
-        role: msg.role,
-        content: msg.content
-      }))
-    ]
+    // Get the Gemini model
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
 
-    // Call OpenAI API
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: openaiMessages,
-      temperature: 0.7,
-      max_tokens: 500,
-    })
+    // Convert messages to Gemini format
+    // Gemini uses a different format - we need to combine system prompt with conversation
+    const conversationHistory = messages
+      .filter((msg: ChatMessage) => msg.role !== 'system')
+      .map((msg: ChatMessage) => {
+        if (msg.role === 'user') {
+          return `ユーザー: ${msg.content}`
+        } else {
+          return `アシスタント: ${msg.content}`
+        }
+      })
+      .join('\n\n')
 
-    const aiMessage = completion.choices[0]?.message?.content || '申し訳ございません。もう一度お願いできますか？'
+    const prompt = `${systemPrompt}\n\n会話履歴:\n${conversationHistory}\n\nアシスタント:`
+
+    // Call Gemini API
+    const result = await model.generateContent(prompt)
+    const response = await result.response
+    const aiMessage = response.text() || '申し訳ございません。もう一度お願いできますか？'
 
     // Check if conversation is complete
     const isComplete = aiMessage.includes('ありがとうございました') || 

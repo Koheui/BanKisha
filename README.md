@@ -12,7 +12,11 @@
 - 認証: Firebase Auth
 - DB/Storage: Firestore / Storage
 - サーバー処理: Firebase Functions (Node18)
-- AI: Whisper API（音声→テキスト変換）、GPT-4/5（記事化、SNS要約生成）、OpenAI TTS（質問読み上げ、番記者の声）
+- AI: 
+  - **Gemini Pro**（記事化、SNS要約生成、音声チャット会話管理）✨
+  - Whisper API（音声→テキスト変換）
+  - Web Speech API（リアルタイム音声認識）
+  - SpeechSynthesis API（音声読み上げ）
 
 ### ユーザーロール
 - admin（編集部）: 全記事の承認・公開権限、全企業の管理権限
@@ -102,6 +106,7 @@ npm run dev
 ### 🆕 新機能（実装済み）
 - [x] **AI音声チャットインタビュー** - リアルタイム音声認識とAI会話形式のインタビュー
 - [x] **会話から自動記事生成** - 音声チャットの会話履歴から記事を自動生成
+- [x] **Gemini Pro統合** - Google Gemini APIを使用した高品質な日本語記事生成 ✨
 
 ### 🚧 今後の実装予定
 - [ ] TTS（テキスト読み上げ）機能の強化
