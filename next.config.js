@@ -1,20 +1,39 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['firebase-admin']
+  serverExternalPackages: ['firebase-admin'],
+  output: 'standalone',
+  reactStrictMode: true,
+  // Firebase Functionsディレクトリを除外
+  webpack: (config, { isServer }) => {
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: ['**/functions/**', '**/node_modules/**'],
+    }
+    return config
   },
   images: {
-    domains: ['lh3.googleusercontent.com', 'firebasestorage.googleapis.com']
-  },
-  async redirects() {
-    return [
+    remotePatterns: [
       {
-        source: '/',
-        destination: '/articles',
-        permanent: false,
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
       },
-    ]
-  }
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
+    ],
+  },
+  // リダイレクトを一時的に無効化（開発中）
+  // async redirects() {
+  //   return [
+  //     {
+  //       source: '/',
+  //       destination: '/articles',
+  //       permanent: false,
+  //     },
+  //   ]
+  // },
 }
 
 module.exports = nextConfig
+

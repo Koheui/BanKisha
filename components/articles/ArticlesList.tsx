@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { getArticles, getCompanies } from '@/src/lib/firestore'
 import { generateSnippet, formatDate } from '@/src/lib/utils'
 import type { Article, Company } from '@/src/types'
-import { CalendarIcon, BuildingIcon, EyeIcon } from 'lucide-react'
+import { CalendarIcon, BuildingIcon, EyeIcon, FileTextIcon, AlertCircleIcon } from 'lucide-react'
 
 interface ArticleWithCompany extends Article {
   company?: Company
@@ -26,6 +26,15 @@ export function ArticlesList() {
   const loadArticles = async () => {
     try {
       setLoading(true)
+      setError(null)
+      
+      // Check if Firebase is configured
+      if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+        setError('Firebase設定が完了していません。.env.localファイルを確認してください。')
+        setLoading(false)
+        return
+      }
+      
       const publicArticles = await getArticles('public')
       const companies = await getCompanies()
       
@@ -37,9 +46,16 @@ export function ArticlesList() {
       
       setArticles(articlesWithCompany)
       setError(null)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading articles:', err)
-      setError('記事の読み込みに失敗しました')
+      const errorMessage = err?.message || '記事の読み込みに失敗しました'
+      if (errorMessage.includes('permission') || errorMessage.includes('PERMISSION_DENIED')) {
+        setError('Firestoreのアクセス権限がありません。Firebase設定を確認してください。')
+      } else if (errorMessage.includes('network') || errorMessage.includes('NETWORK')) {
+        setError('ネットワークエラーが発生しました。Firebase接続を確認してください。')
+      } else {
+        setError(`記事の読み込みに失敗しました: ${errorMessage}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -52,12 +68,12 @@ export function ArticlesList() {
           <Card key={i} className="animate-pulse">
             <CardHeader>
               <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-4" />
-              <CardTitle className="text-center">
+              <div className="text-center">
                 <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto" />
-              </CardTitle>
-              <CardDescription className="text-center">
+              </div>
+              <div className="text-sm text-muted-foreground text-center">
                 <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mx-auto" />
-              </CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -74,15 +90,26 @@ export function ArticlesList() {
 
   if (error) {
     return (
-      <Card className="max-w-md mx-auto">
+      <Card className="max-w-2xl mx-auto border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20">
         <CardHeader>
-          <div className="w-16 h-16 bg-gradient-to-r from-red-100 to-pink-100 dark:from-red-900 dark:to-pink-900 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircleIcon className="w-8 h-8 text-red-600 dark:text-red-400" />
+          <div className="w-16 h-16 bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900 dark:to-orange-900 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircleIcon className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
           </div>
-          <CardTitle className="text-center text-red-600 dark:text-red-400">エラーが発生しました</CardTitle>
-          <CardDescription className="text-center">
+          <CardTitle className="text-center text-yellow-800 dark:text-yellow-300">設定が必要です</CardTitle>
+          <CardDescription className="text-center text-yellow-700 dark:text-yellow-400 mt-4">
             {error}
           </CardDescription>
+          <CardContent className="mt-4">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg text-sm text-gray-700 dark:text-gray-300">
+              <p className="font-semibold mb-2">セットアップ手順:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>env.exampleを.env.localにコピー</li>
+                <li>Firebase Consoleから設定値を取得</li>
+                <li>.env.localに設定値を入力</li>
+                <li>開発サーバーを再起動</li>
+              </ol>
+            </div>
+          </CardContent>
         </CardHeader>
       </Card>
     )
@@ -108,7 +135,7 @@ export function ArticlesList() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg: grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {articles.map((article) => (
         <Card key={article.id} className="group hover:shadow-lg transition-all duration-300 border-0 shadow-md">
           <CardHeader className="text-center pb-4">
@@ -129,17 +156,17 @@ export function ArticlesList() {
               {article.finalArticle?.title || article.draftArticle.title}
             </CardTitle>
             
-            <CardDescription className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 mt-2">
               <Badge variant="outline" className="text-xs">
                 {article.company?.name || '企業情報なし'}
               </Badge>
-            </CardDescription>
+            </div>
           </CardHeader>
 
           <CardContent className="pt-0">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
               {generateSnippet(article.finalArticle?.lead || article.draftArticle.lead)}
-            </p>
+            </div>
             
             <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-4">
               <div className="flex items-center gap-1">

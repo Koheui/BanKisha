@@ -4,12 +4,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { AlertCircleIcon, LoaderIcon } from 'lucide-react'
 
 interface ArticlePageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
-export default function ArticlePage({ params }: ArticlePageProps) {
+export default async function ArticlePage({ params }: ArticlePageProps) {
+  const { id } = await params
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -23,7 +24,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
             </CardContent>
           </Card>
         }>
-          <ArticleDetail articleId={params.id} />
+          <ArticleDetail articleId={id} />
         </Suspense>
         
         {/* Back to Articles */}

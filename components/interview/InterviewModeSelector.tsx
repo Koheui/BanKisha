@@ -1,249 +1,130 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useRouter } from 'next/navigation'
+import { getFirebaseDb } from '@/src/lib/firebase'
+import { collection, query, where, getDocs } from 'firebase/firestore'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { InterviewWizard } from './InterviewWizard'
-import { VoiceChat } from './VoiceChat'
-import { getSession } from '@/src/lib/firestore'
-import type { Session } from '@/src/types'
-import {
-  MessageSquareIcon,
-  FileTextIcon,
-  MicIcon,
-  SparklesIcon,
-  LoaderIcon,
-  AlertCircleIcon,
-  CheckCircleIcon
-} from 'lucide-react'
+import { MicIcon, LoaderIcon, ArrowRightIcon } from 'lucide-react'
+import { InterviewSession } from '@/src/types'
 
 interface InterviewModeSelectorProps {
   sessionId: string
 }
 
-type InterviewMode = 'select' | 'wizard' | 'voicechat'
-
 export function InterviewModeSelector({ sessionId }: InterviewModeSelectorProps) {
-  const [mode, setMode] = useState<InterviewMode>('select')
-  const [session, setSession] = useState<Session | null>(null)
+  const router = useRouter()
+  const [interview, setInterview] = useState<InterviewSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadSession()
+    loadInterview()
   }, [sessionId])
 
-  const loadSession = async () => {
+  const loadInterview = async () => {
     try {
       setLoading(true)
-      const sessionData = await getSession(sessionId)
-      
-      if (!sessionData) {
-        setError('セッションが見つかりません')
+      // shareTokenでインタビューを検索
+      const q = query(
+        collection(getFirebaseDb(), 'interviews'),
+        where('shareToken', '==', sessionId)
+      )
+      const snapshot = await getDocs(q)
+
+      if (snapshot.empty) {
+        setError('インタビューが見つかりません。URLが正しいか確認してください。')
         return
       }
-      
-      if (sessionData.status === 'completed') {
-        setError('このセッションは既に完了しています')
-        return
-      }
-      
-      if (new Date() > sessionData.expiresAt) {
-        setError('このセッションは有効期限切れです')
-        return
-      }
-      
-      setSession(sessionData)
-      setError(null)
-    } catch (err) {
-      console.error('Error loading session:', err)
-      setError('セッションの読み込みに失敗しました')
+
+      const doc = snapshot.docs[0]
+      const data = doc.data() as Omit<InterviewSession, 'id' | 'createdAt' | 'updatedAt'> & { createdAt: any, updatedAt: any }
+      setInterview({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate(),
+      })
+    } catch (error) {
+      console.error('Error loading interview:', error)
+      setError('インタビューの読み込みに失敗しました')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleComplete = async (data: any) => {
-    // Handle completion - convert to article format
-    // This will be called from both modes
-    console.log('Interview completed:', data)
+  const handleStartInterview = () => {
+    if (interview) {
+      // 音声チャットインタビューページに遷移
+      router.push(`/interview/${interview.id}`)
+    }
   }
 
   if (loading) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">読み込み中...</p>
+          <LoaderIcon className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">インタビューを準備中...</p>
         </CardContent>
       </Card>
     )
   }
 
-  if (error) {
+  if (error || !interview) {
     return (
       <Card>
-        <CardHeader>
-          <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-red-100 to-pink-100 dark:from-red-900 dark:to-pink-900 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircleIcon className="w-8 h-8 text-red-600 dark:text-red-400" />
-            </div>
-            <CardTitle className="text-red-600 dark:text-red-400">エラー</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </div>
-        </CardHeader>
-      </Card>
-    )
-  }
-
-  if (mode === 'wizard') {
-    return <InterviewWizard sessionId={sessionId} />
-  }
-
-  if (mode === 'voicechat' && session) {
-    return (
-      <VoiceChat
-        sessionId={sessionId}
-        companyId={session.companyId}
-        onComplete={handleComplete}
-      />
-    )
-  }
-
-  // Mode selection
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
-        <CardHeader className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <SparklesIcon className="w-8 h-8 text-white" />
-          </div>
-          <CardTitle className="text-3xl font-bold gradient-text">
-            インタビューモードを選択
-          </CardTitle>
-          <CardDescription className="text-lg">
-            どちらの方法でインタビューを行いますか？
-          </CardDescription>
-        </CardHeader>
-      </Card>
-
-      {/* Mode Selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Voice Chat Mode */}
-        <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer group" onClick={() => setMode('voicechat')}>
-          <CardHeader>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                <MessageSquareIcon className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-xl">AI音声チャット</CardTitle>
-                <Badge variant="secondary" className="mt-1">推奨</Badge>
-              </div>
-            </div>
-            <CardDescription>
-              AI番記者と自然な会話形式でインタビューを行います
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li className="flex items-center gap-2">
-                <CheckCircleIcon className="w-4 h-4 text-green-600" />
-                リアルタイム音声認識
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircleIcon className="w-4 h-4 text-green-600" />
-                AIが質問を自動生成
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircleIcon className="w-4 h-4 text-green-600" />
-                より自然な会話体験
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircleIcon className="w-4 h-4 text-green-600" />
-                会話から自動で記事生成
-              </li>
-            </ul>
-            <Button
-              variant="gradient"
-              className="w-full mt-6"
-              onClick={() => setMode('voicechat')}
-            >
-              <MessageSquareIcon className="w-5 h-5 mr-2" />
-              音声チャットで開始
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Wizard Mode */}
-        <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer group" onClick={() => setMode('wizard')}>
-          <CardHeader>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                <FileTextIcon className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-xl">質問形式</CardTitle>
-                <Badge variant="outline" className="mt-1">従来型</Badge>
-              </div>
-            </div>
-            <CardDescription>
-              事前に用意された質問に順番に回答します
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li className="flex items-center gap-2">
-                <CheckCircleIcon className="w-4 h-4 text-green-600" />
-                質問ごとに回答
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircleIcon className="w-4 h-4 text-green-600" />
-                音声またはテキスト入力
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircleIcon className="w-4 h-4 text-green-600" />
-                進捗を確認しながら回答
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircleIcon className="w-4 h-4 text-green-600" />
-                確実にすべての質問に回答
-              </li>
-            </ul>
-            <Button
-              variant="outline"
-              className="w-full mt-6"
-              onClick={() => setMode('wizard')}
-            >
-              <FileTextIcon className="w-5 h-5 mr-2" />
-              質問形式で開始
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Info */}
-      <Card className="border-0 shadow-md bg-blue-50 dark:bg-blue-950/20">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-3">
-            <SparklesIcon className="w-6 h-6 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                どちらを選べばいいですか？
-              </h3>
-              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                <strong>AI音声チャット</strong>は、より自然で会話的なインタビュー体験を提供します。
-                AIが会話の流れに応じて質問を生成するため、より深い情報を得られます。
-                <br /><br />
-                <strong>質問形式</strong>は、事前に用意された質問に確実に回答したい場合に適しています。
-                すべての質問に漏れなく回答できます。
-              </p>
-            </div>
-          </div>
+        <CardContent className="p-8 text-center">
+          <p className="text-red-600 dark:text-red-400 mb-4">{error || 'インタビューが見つかりません'}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            URLが正しいか確認してください。
+          </p>
         </CardContent>
       </Card>
-    </div>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-2xl">音声チャットインタビュー</CardTitle>
+        <CardDescription>インタビューに参加します</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            {interview.title}
+          </h3>
+          <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+            <p>取材先: {interview.intervieweeName} ({interview.intervieweeCompany})</p>
+            <p>インタビュアー: {interview.interviewerName} ({interview.interviewerRole})</p>
+            {interview.objective && (
+              <div>
+                <p className="font-semibold mb-1">取材目的:</p>
+                <p className="whitespace-pre-wrap">{interview.objective}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+          <p className="text-sm text-blue-900 dark:text-blue-300">
+            💡 このインタビューは音声形式で行われます。マイクの使用を許可してください。
+          </p>
+        </div>
+
+        <Button
+          onClick={handleStartInterview}
+          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+          size="lg"
+        >
+          <MicIcon className="w-5 h-5 mr-2" />
+          音声チャットインタビューを開始
+          <ArrowRightIcon className="w-5 h-5 ml-2" />
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
+

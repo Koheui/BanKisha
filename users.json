@@ -1,0 +1,21 @@
+{"users": [
+{
+  "localId": "kEpPfqPiuzZNfz2WBUms6jrnaHx1",
+  "email": "office@futurestudio.co.jp",
+  "emailVerified": false,
+  "passwordHash": "XHBC6HV3VQh54zG8dTNkqWmVgqdj7QNUwXLzK8i1MwWoFJcdegnYsd2pckW5xhi9vPsLVpB9pNZkZQZZq3HRtQ==",
+  "salt": "slJM0hko5mCLgw==",
+  "lastSignedInAt": "1765129224060",
+  "createdAt": "1765119785025",
+  "providerUserInfo": []
+},
+{
+  "localId": "rO0ykbFoIWgnOlQxUnk49gpTJxA3",
+  "email": "cafegolazo@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "fstHX6/yitEchyxMv2Tet97v512FAksDNrYqx2yC5plUUY/SUqXeisGNdZ0AZqnzcAWXbMRSeiLtnkvNPXWqAw==",
+  "salt": "bdmljUayJjmrrw==",
+  "lastSignedInAt": "1765623852834",
+  "createdAt": "1765443384343",
+  "providerUserInfo": []
+}]}

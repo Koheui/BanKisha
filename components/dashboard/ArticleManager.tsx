@@ -40,7 +40,7 @@ export function ArticleManager({ companyId, onStatsUpdate }: ArticleManagerProps
     try {
       setLoading(true)
       const filterStatus = filter === 'all' ? undefined : filter
-      const data = await getArticles(filterStatus, companyId)
+      const data = await getArticles(filterStatus)
       setArticles(data)
 
       // Update stats

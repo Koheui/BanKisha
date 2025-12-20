@@ -1,167 +1,195 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy, 
+import { getFirebaseDb } from './firebase'
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
   limit,
   Timestamp,
-  serverTimestamp
+  QueryConstraint
 } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { db, storage } from './firebase'
-import type { User, Company, QuestionSet, Article, Session, QARecord, KnowledgeBase } from '../types'
+import type { Article, Company, KnowledgeBase } from '../types'
 
-// Users Collection
-export const usersCollection = collection(db, 'users')
-export const getUser = async (uid: string): Promise<User | null> => {
-  const docRef = doc(db, 'users', uid)
-  const docSnap = await getDoc(docRef)
-  return docSnap.exists() ? { id: uid, ...docSnap.data() } as User : null
-}
-
-// Companies Collection
-export const companiesCollection = collection(db, 'companies')
-export const getCompany = async (companyId: string): Promise<Company | null> => {
-  const docRef = doc(db, 'companies', companyId)
-  const docSnap = await getDoc(docRef)
-  return docSnap.exists() ? { id: companyId, ...docSnap.data() } as Company : null
-}
-
-export const getCompanies = async (): Promise<Company[]> => {
-  const q = query(companiesCollection, orderBy('createdAt', 'desc'))
-  const querySnapshot = await getDocs(q)
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company))
-}
-
-export const createCompany = async (companyData: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
-  const docRef = await addDoc(companiesCollection, {
-    ...companyData,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  })
-  return docRef.id
-}
-
-// Articles Collection
-export const articlesCollection = collection(db, 'articles')
-export const getArticle = async (articleId: string): Promise<Article | null> => {
-  const docRef = doc(db, 'articles', articleId)
-  const docSnap = await getDoc(docRef)
-  return docSnap.exists() ? { id: articleId, ...docSnap.data() } as Article : null
-}
-
-export const getArticles = async (status?: string, companyId?: string): Promise<Article[]> => {
-  let q = query(articlesCollection)
-  
-  if (status) {
-    q = query(q, where('status', '==', status))
+// Articles
+export async function getArticles(status?: string, companyId?: string): Promise<Article[]> {
+  try {
+    const articlesRef = collection(getFirebaseDb(), 'articles')
+    const constraints: QueryConstraint[] = []
+    
+    if (status) {
+      constraints.push(where('status', '==', status))
+    }
+    
+    if (companyId) {
+      constraints.push(where('companyId', '==', companyId))
+    }
+    
+    constraints.push(orderBy('createdAt', 'desc'))
+    
+    const q = query(articlesRef, ...constraints)
+    const snapshot = await getDocs(q)
+    
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+      submittedAt: doc.data().submittedAt?.toDate(),
+      approvedAt: doc.data().approvedAt?.toDate(),
+      publicMeta: doc.data().publicMeta ? {
+        ...doc.data().publicMeta,
+        publishedAt: doc.data().publicMeta.publishedAt?.toDate() || new Date()
+      } : undefined
+    })) as Article[]
+  } catch (error) {
+    console.error('Error getting articles:', error)
+    throw error
   }
-  
-  if (companyId) {
-    q = query(q, where('companyId', '==', companyId))
+}
+
+export async function getArticle(id: string): Promise<Article | null> {
+  try {
+    const docRef = doc(getFirebaseDb(), 'articles', id)
+    const docSnap = await getDoc(docRef)
+    
+    if (!docSnap.exists()) {
+      return null
+    }
+    
+    return {
+      id: docSnap.id,
+      ...docSnap.data(),
+      createdAt: docSnap.data().createdAt?.toDate() || new Date(),
+      updatedAt: docSnap.data().updatedAt?.toDate() || new Date(),
+      submittedAt: docSnap.data().submittedAt?.toDate(),
+      approvedAt: docSnap.data().approvedAt?.toDate()
+    } as Article
+  } catch (error) {
+    console.error('Error getting article:', error)
+    throw error
   }
-  
-  q = query(q, orderBy('createdAt', 'desc'))
-  const querySnapshot = await getDocs(q)
-  
-  return querySnapshot.docs.map(doc => ({ 
-    id: doc.id, 
-    ...doc.data(),
-    createdAt: doc.data().createdAt?.toDate() || new Date(),
-    updatedAt: doc.data().updatedAt?.toDate() || new Date()
-  } as Article))
 }
 
-export const createArticle = async (articleData: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
-  const docRef = await addDoc(articlesCollection, {
-    ...articleData,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  })
-  return docRef.id
+export async function createArticle(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  try {
+    const docRef = await addDoc(collection(getFirebaseDb(), 'articles'), {
+      ...article,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    })
+    return docRef.id
+  } catch (error) {
+    console.error('Error creating article:', error)
+    throw error
+  }
 }
 
-export const updateArticle = async (articleId: string, articleData: Partial<Article>): Promise<void> => {
-  const docRef = doc(db, 'articles', articleId)
-  await updateDoc(docRef, {
-    ...articleData,
-    updatedAt: serverTimestamp()
-  })
+export async function updateArticle(id: string, data: Partial<Article>): Promise<void> {
+  try {
+    const docRef = doc(getFirebaseDb(), 'articles', id)
+    await updateDoc(docRef, {
+      ...data,
+      updatedAt: Timestamp.now()
+    })
+  } catch (error) {
+    console.error('Error updating article:', error)
+    throw error
+  }
 }
 
-// Question Sets Collection
-export const questionSetsCollection = collection(db, 'questionSets')
-export const getQuestionSet = async (questionSetId: string): Promise<QuestionSet | null> => {
-  const docRef = doc(db, 'questionSets', questionSetId)
-  const docSnap = await getDoc(docRef)
-  return docSnap.exists() ? { id: questionSetId, ...docSnap.data() } as QuestionSet : null
+export async function deleteArticle(id: string): Promise<void> {
+  try {
+    await deleteDoc(doc(getFirebaseDb(), 'articles', id))
+  } catch (error) {
+    console.error('Error deleting article:', error)
+    throw error
+  }
 }
 
-export const getQuestionSets = async (): Promise<QuestionSet[]> => {
-  const q = query(questionSetsCollection, orderBy('title'))
-  const querySnapshot = await getDocs(q)
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuestionSet))
+// Companies
+export async function getCompanies(): Promise<Company[]> {
+  try {
+    const companiesRef = collection(getFirebaseDb(), 'companies')
+    const snapshot = await getDocs(companiesRef)
+    
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date()
+    } as Company))
+  } catch (error) {
+    console.error('Error getting companies:', error)
+    throw error
+  }
 }
 
-// Sessions Collection
-export const sessionsCollection = collection(db, 'sessions')
-export const getSession = async (sessionId: string): Promise<Session | null> => {
-  const docRef = doc(db, 'sessions', sessionId)
-  const docSnap = await getDoc(docRef)
-  return docSnap.exists() ? { 
-    id: sessionId, 
-    ...docSnap.data(),
-    expiresAt: docSnap.data()?.expiresAt?.toDate() || new Date()
-  } as Session : null
+export async function getCompany(id: string): Promise<Company | null> {
+  try {
+    const docRef = doc(getFirebaseDb(), 'companies', id)
+    const docSnap = await getDoc(docRef)
+    
+    if (!docSnap.exists()) {
+      return null
+    }
+    
+    return {
+      id: docSnap.id,
+      ...docSnap.data(),
+      createdAt: docSnap.data().createdAt?.toDate() || new Date()
+    } as Company
+  } catch (error) {
+    console.error('Error getting company:', error)
+    throw error
+  }
 }
 
-export const createSession = async (sessionData: Omit<Session, 'id'>): Promise<string> => {
-  const docRef = await addDoc(sessionsCollection, sessionData)
-  return docRef.id
+// Knowledge Bases
+export async function getKnowledgeBases(type?: 'skill' | 'info' | 'user', companyId?: string): Promise<KnowledgeBase[]> {
+  try {
+    const kbRef = collection(getFirebaseDb(), 'knowledgeBases')
+    const constraints: QueryConstraint[] = []
+    
+    if (type) {
+      constraints.push(where('type', '==', type))
+    }
+    
+    if (companyId) {
+      constraints.push(where('companyId', '==', companyId))
+    }
+    
+    constraints.push(orderBy('createdAt', 'desc'))
+    
+    const q = query(kbRef, ...constraints)
+    const snapshot = await getDocs(q)
+    
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date()
+    } as KnowledgeBase))
+  } catch (error) {
+    console.error('Error getting knowledge bases:', error)
+    throw error
+  }
 }
 
-// Storage helpers
-export const uploadAudioFile = async (file: File, path: string): Promise<string> => {
-  const storageRef = ref(storage, path)
-  await uploadBytes(storageRef, file)
-  return await getDownloadURL(storageRef)
+export async function getSkillKnowledgeBases(): Promise<KnowledgeBase[]> {
+  return getKnowledgeBases('skill')
 }
 
-export const deleteAudioFile = async (path: string): Promise<void> => {
-  const storageRef = ref(storage, path)
-  await deleteObject(storageRef)
+export async function getInfoKnowledgeBases(): Promise<KnowledgeBase[]> {
+  return getKnowledgeBases('info')
 }
 
-// Knowledge Bases Collection
-export const knowledgeBasesCollection = collection(db, 'knowledgeBases')
-export const getKnowledgeBases = async (): Promise<KnowledgeBase[]> => {
-  const q = query(knowledgeBasesCollection, orderBy('createdAt', 'desc'))
-  const querySnapshot = await getDocs(q)
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-    createdAt: doc.data().createdAt?.toDate() || new Date(),
-    updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-    processedAt: doc.data().processedAt?.toDate()
-  } as KnowledgeBase))
+export async function getUserKnowledgeBases(companyId: string): Promise<KnowledgeBase[]> {
+  return getKnowledgeBases('user', companyId)
 }
 
-export const deleteKnowledgeBase = async (knowledgeBaseId: string): Promise<void> => {
-  const docRef = doc(db, 'knowledgeBases', knowledgeBaseId)
-  await deleteDoc(docRef)
-  
-  // Also delete related chunks
-  const chunksQuery = query(
-    collection(db, 'knowledgeChunks'),
-    where('knowledgeBaseId', '==', knowledgeBaseId)
-  )
-  const chunksSnapshot = await getDocs(chunksQuery)
-  const deletePromises = chunksSnapshot.docs.map(chunkDoc => deleteDoc(chunkDoc.ref))
-  await Promise.all(deletePromises)
-}
+

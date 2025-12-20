@@ -4,12 +4,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { LoaderIcon } from 'lucide-react'
 
 interface InvitePageProps {
-  params: {
+  params: Promise<{
     sessionId: string
-  }
+  }>
 }
 
-export default function InvitePage({ params }: InvitePageProps) {
+export default async function InvitePage({ params }: InvitePageProps) {
+  const { sessionId } = await params
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -23,7 +24,7 @@ export default function InvitePage({ params }: InvitePageProps) {
             </CardContent>
           </Card>
         }>
-          <InterviewModeSelector sessionId={params.sessionId} />
+          <InterviewModeSelector sessionId={sessionId} />
         </Suspense>
       </div>
     </div>

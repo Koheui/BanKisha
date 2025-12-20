@@ -47,15 +47,15 @@ export function Header() {
                   ダッシュボード
                 </Link>
                 
-                {user.role === 'admin' && (
-                  <Badge variant="secondary" className="text-xs">
-                    管理者
+                {user?.role === 'superAdmin' && (
+                  <Badge className="text-xs bg-red-600 text-white hover:bg-red-700 border-red-600">
+                    Super Admin
                   </Badge>
                 )}
                 
-                {user.role === 'company' && (
-                  <Badge variant="outline" className="text-xs">
-                    企業
+                {user?.role === 'admin' && (
+                  <Badge variant="secondary" className="text-xs">
+                    管理者
                   </Badge>
                 )}
               </>
@@ -73,7 +73,7 @@ export function Header() {
                     <UserIcon className="w-4 h-4 text-white" />
                   </div>
                   <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {user.displayName || user.email}
+                    {user?.displayName || user?.email || 'ユーザー'}
                   </span>
                 </div>
                 <Button 
@@ -138,9 +138,14 @@ export function Header() {
                         <UserIcon className="w-3 h-3 text-white" />
                       </div>
                       <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {user.displayName || user.email}
+                        {user?.displayName || user?.email || 'ユーザー'}
                       </span>
-                      {user.role === 'admin' && (
+                      {user?.role === 'superAdmin' && (
+                        <Badge className="text-xs ml-2 bg-red-600 text-white hover:bg-red-700 border-red-600">
+                          Super Admin
+                        </Badge>
+                      )}
+                      {user?.role === 'admin' && (
                         <Badge variant="secondary" className="text-xs ml-2">
                           管理者
                         </Badge>

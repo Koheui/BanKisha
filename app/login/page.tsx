@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { AlertCircleIcon, EyeIcon, EyeOffIcon, LogInIcon, UserIcon } from 'lucide-react'
+import { AlertCircleIcon, EyeIcon, EyeOffIcon, LogInIcon, User, MailIcon } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -32,10 +32,24 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password)
+      // Wait a bit for auth state to update
+      await new Promise(resolve => setTimeout(resolve, 500))
       router.push('/dashboard')
     } catch (err: any) {
       console.error('Login error:', err)
-      setError(err.message || 'ログインに失敗しました')
+      
+      let errorMessage = 'ログインに失敗しました'
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        errorMessage = 'メールアドレスまたはパスワードが正しくありません'
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = '無効なメールアドレスです'
+      } else if (err.code === 'auth/too-many-requests') {
+        errorMessage = 'ログイン試行回数が多すぎます。しばらく待ってから再度お試しください'
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+      
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -82,15 +96,16 @@ export default function LoginPage() {
                   メールアドレス
                 </label>
                 <div className="relative">
-                  <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <MailIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     id="email"
                     name="email"
                     type="email"
                     autoComplete="email"
                     required
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:bg-gray-800 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="your@example.com"
+                    style={{ backgroundColor: 'white', color: 'black' }}
+                    className="w-full pl-10 pr-3 py-2 border-2 border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="office@futurestudio.co.jp"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading}
@@ -109,7 +124,8 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     required
-                    className="w-full pl-3 pr-10 py-2 border border-gray-300 dark:bg-gray-800 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    style={{ backgroundColor: 'white', color: 'black' }}
+                    className="w-full pl-3 pr-10 py-2 border-2 border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="パスワードを入力"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

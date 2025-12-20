@@ -4,12 +4,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { LoaderIcon } from 'lucide-react'
 
 interface EditArticlePageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
-export default function EditArticlePage({ params }: EditArticlePageProps) {
+export default async function EditArticlePage({ params }: EditArticlePageProps) {
+  const { id } = await params
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -23,9 +24,10 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
             </CardContent>
           </Card>
         }>
-          <ArticleEditor articleId={params.id} />
+          <ArticleEditor articleId={id} />
         </Suspense>
       </div>
     </div>
   )
 }
+

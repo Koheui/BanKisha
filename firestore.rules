@@ -1,64 +1,144 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read/write their own user document
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Company data - companies can read their own data, admins can read all
-    match /companies/{companyId} {
-      allow read: if request.auth != null && 
-        (resource.data.owner == request.auth.uid || userHasRole('admin'));
-      allow write: if request.auth != null && 
-        (resource.data.owner == request.auth.uid || userHasRole('admin'));
-      allow create: if request.auth != null && 
-        (request.resource.data.owner == request.auth.uid || userHasRole('admin'));
-    }
-    
-    // Articles - companies can read/write their own articles, admins can read/write all
-    match /articles/{articleId} {
-      allow read: if request.auth != null && 
-        (resource.data.companyId == getCompanyId(request.auth.uid) || userHasRole('admin'));
-      allow write: if request.auth != null && 
-        (request.resource.data.companyId == getCompanyId(request.auth.uid) || userHasRole('admin'));
-      allow create: if request.auth != null && 
-        (request.resource.data.companyId == getCompanyId(request.auth.uid) || userHasRole('admin'));
-    }
-    
-    // Question sets - readable by all authenticated users
-    match /questionSets/{questionSetId} {
-      allow read: if request.auth != null;
-      allow write: if userHasRole('admin');
-    }
-    
-    // Sessions - readable by company users and admins
-    match /sessions/{sessionId} {
-      allow read: if request.auth != null && 
-        (resource.data.companyId == getCompanyId(request.auth.uid) || userHasRole('admin'));
-      allow write: if request.auth != null && 
-        (resource.data.companyId == getCompanyId(request.auth.uid) || userHasRole('admin'));
-    }
-    
-    // Knowledge Bases - only admins can manage
-    match /knowledgeBases/{knowledgeBaseId} {
-      allow read: if request.auth != null;
-      allow write: if userHasRole('admin');
-    }
-    
-    // Knowledge Chunks - readable by all authenticated users (for search)
-    match /knowledgeChunks/{chunkId} {
-      allow read: if request.auth != null;
-      allow write: if userHasRole('admin');
-    }
-    
     // Helper functions
-    function userHasRole(role) {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    function isAuthenticated() {
+      return request.auth != null;
     }
-    
-    function getCompanyId(uid) {
-      return get(/databases/$(database)/documents/users/$(uid)).data.companyId;
+
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superAdmin';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superAdmin'];
+    }
+
+    function belongsToCompany(companyId) {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // Companies collection
+    match /companies/{companyId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || belongsToCompany(companyId);
+      allow delete: if isSuperAdmin();
+    }
+
+    // Knowledge Bases collection
+    match /knowledgeBases/{kbId} {
+      // Read: all authenticated users
+      allow read: if isAuthenticated();
+
+      // Create
+      allow create: if isAuthenticated() && (
+        // Skill KB: superAdmin only
+        (request.resource.data.type == 'skill' && isSuperAdmin()) ||
+        // Info KB: superAdmin only
+        (request.resource.data.type == 'info' && isSuperAdmin()) ||
+        // User KB: authenticated users (with companyId)
+        (request.resource.data.type == 'user' && 
+         request.resource.data.companyId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId)
+      );
+
+      // Update
+      allow update: if isAuthenticated() && (
+        // Skill/Info KB: superAdmin only
+        ((resource.data.type == 'skill' || resource.data.type == 'info') && isSuperAdmin()) ||
+        // User KB: owner or company member
+        (resource.data.type == 'user' && belongsToCompany(resource.data.companyId))
+      );
+
+      // Delete
+      allow delete: if isAuthenticated() && (
+        // Skill/Info KB: superAdmin only
+        ((resource.data.type == 'skill' || resource.data.type == 'info') && isSuperAdmin()) ||
+        // User KB: owner or company member
+        (resource.data.type == 'user' && belongsToCompany(resource.data.companyId))
+      );
+    }
+
+    // Articles collection
+    match /articles/{articleId} {
+      allow read: if true; // Public read for published articles
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        belongsToCompany(resource.data.companyId)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Interview Sessions collection
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated() || 
+                     resource.data.shareToken != null; // Allow access via share token
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && belongsToCompany(resource.data.companyId);
+      allow delete: if isAuthenticated() && belongsToCompany(resource.data.companyId);
+    }
+
+    // Question Sets collection
+    match /questionSets/{setId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && belongsToCompany(resource.data.companyId);
+      allow delete: if isAuthenticated() && belongsToCompany(resource.data.companyId);
+    }
+
+    // System Settings collection
+    match /systemSettings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // Interviewers collection
+    match /interviewers/{interviewerId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && belongsToCompany(resource.data.companyId);
+      allow delete: if isAuthenticated() && belongsToCompany(resource.data.companyId);
+    }
+
+    // Interviews collection
+    match /interviews/{interviewId} {
+      allow read: if isAuthenticated() || 
+                     resource.data.shareToken != null;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.createdBy) || 
+        belongsToCompany(resource.data.companyId)
+      );
+      allow delete: if isAuthenticated() && (
+        isOwner(resource.data.createdBy) || 
+        belongsToCompany(resource.data.companyId)
+      );
+    }
+
+    // Messages subcollection
+    match /interviews/{interviewId}/messages/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if false; // Messages are immutable
+      allow delete: if false; // Messages cannot be deleted
     }
   }
 }
+

@@ -7,53 +7,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { useToast } from '@/components/ui/toaster'
-import { AlertCircleIcon, EyeIcon, EyeOffIcon, UserPlusIcon, MailIcon, LockIcon, BuildingIcon } from 'lucide-react'
+import { AlertCircleIcon, EyeIcon, EyeOffIcon, UserPlusIcon, MailIcon, UserIcon } from 'lucide-react'
 
 export default function SignupPage() {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    displayName: '',
-    companyName: ''
-  })
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
   const { signUp } = useAuth()
   const router = useRouter()
-  const { toast } = useToast()
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
-
-  const validateForm = () => {
-    if (!formData.email || !formData.password || !formData.displayName || !formData.companyName) {
-      return 'すべての項目を入力してください'
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      return 'パスワードが一致しません'
-    }
-    
-    if (formData.password.length < 6) {
-      return 'パスワードは6文字以上で入力してください'
-    }
-    
-    return null
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    const validationError = validateForm()
-    if (validationError) {
-      setError(validationError)
+    if (!email || !password) {
+      setError('メールアドレスとパスワードを入力してください')
+      return
+    }
+
+    if (password.length < 6) {
+      setError('パスワードは6文字以上である必要があります')
       return
     }
 
@@ -61,29 +37,22 @@ export default function SignupPage() {
     setError('')
 
     try {
-      const userCredential = await signUp(formData.email, formData.password)
-      
-      // Update user document with additional info
-      if (userCredential.user) {
-        // TODO: Create company and link to user
-        toast({
-          title: '登録完了！',
-          description: 'アカウントが正常に作成されました。',
-          type: 'success'
-        })
-        
-        router.push('/dashboard')
-      }
+      await signUp(email, password, displayName || undefined)
+      // Wait a bit for auth state to update
+      await new Promise(resolve => setTimeout(resolve, 500))
+      router.push('/dashboard')
     } catch (err: any) {
       console.error('Signup error:', err)
       
-      let errorMessage = '新規登録に失敗しました'
+      let errorMessage = 'アカウント作成に失敗しました'
       if (err.code === 'auth/email-already-in-use') {
         errorMessage = 'このメールアドレスは既に使用されています'
-      } else if (err.code === 'auth/weak-password') {
-        errorMessage = 'パスワードが弱すぎます'
       } else if (err.code === 'auth/invalid-email') {
         errorMessage = '無効なメールアドレスです'
+      } else if (err.code === 'auth/weak-password') {
+        errorMessage = 'パスワードが弱すぎます。より強力なパスワードを設定してください'
+      } else if (err.message) {
+        errorMessage = err.message
       }
       
       setError(errorMessage)
@@ -106,7 +75,7 @@ export default function SignupPage() {
             BanKisha 新規登録
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            アカウントを作成して企業インタビューを開始
+            アカウントを作成してダッシュボードにアクセス
           </p>
         </div>
 
@@ -115,7 +84,7 @@ export default function SignupPage() {
           <CardHeader>
             <CardTitle className="text-center">新規登録</CardTitle>
             <CardDescription className="text-center">
-              企業様のみご利用いただけます
+              アカウント情報を入力してください
             </CardDescription>
           </CardHeader>
           
@@ -128,129 +97,62 @@ export default function SignupPage() {
                 </div>
               )}
               
-              {/* Company Name */}
-              <div>
-                <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  会社名 <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <BuildingIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    id="companyName"
-                    name="companyName"
-                    type="text"
-                    required
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:bg-gray-800 rounded-md shadow-sm placeholder-gray-400 focus:outline-none dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="会社名を入力"
-                    value={formData.companyName}
-                    onChange={handleChange}
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              {/* Display Name */}
               <div>
                 <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  お名前 <span className="text-red-500">*</span>
+                  表示名（任意）
                 </label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     id="displayName"
-                    name="displayName"
                     type="text"
-                    required
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:bg-gray-800 rounded-md shadow-sm placeholder-gray-400 focus:outline-none dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="お名前を入力"
-                    value={formData.displayName}
-                    onChange={handleChange}
-                    disabled={loading}
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    placeholder="表示名を入力（任意）"
                   />
                 </div>
               </div>
-
+              
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  メールアドレス <span className="text-red-500">*</span>
+                  メールアドレス
                 </label>
                 <div className="relative">
                   <MailIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     id="email"
-                    name="email"
                     type="email"
-                    autoComplete="email"
                     required
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:bg-gray-800 rounded-md shadow-sm placeholder-gray-400 focus:outline-none dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="your@example.com"
-                    value={formData.email}
-                    onChange={handleChange}
-                    disabled={loading}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    placeholder="メールアドレスを入力"
                   />
                 </div>
               </div>
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  パスワード <span className="text-red-500">*</span>
-
-
+                  パスワード
                 </label>
                 <div className="relative">
-                  <LockIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     id="password"
-                    name="password"
                     type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
                     required
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:bg-gray-800 rounded-md shadow-sm placeholder-gray-400 focus:outline-none dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="6文字以上で入力"
-                    value={formData.password}
-                    onChange={handleChange}
-                    disabled={loading}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-4 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    placeholder="パスワードを入力（6文字以上）"
+                    minLength={6}
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={loading}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   >
                     {showPassword ? (
-                      <EyeOffIcon className="w-5 h-5" />
-                    ) : (
-                      <EyeIcon className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  パスワード確認 <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <LockIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    required
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:bg-gray-800 rounded-md shadow-sm placeholder-gray-400 focus:outline-none dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="パスワードを再入力"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    disabled={loading}
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    disabled={loading}
-                  >
-                    {showConfirmPassword ? (
                       <EyeOffIcon className="w-5 h-5" />
                     ) : (
                       <EyeIcon className="w-5 h-5" />
@@ -273,7 +175,7 @@ export default function SignupPage() {
                 ) : (
                   <div className="flex items-center gap-2">
                     <UserPlusIcon className="w-5 h-5" />
-                    アカウントを作成
+                    アカウント作成
                   </div>
                 )}
               </Button>
@@ -288,17 +190,15 @@ export default function SignupPage() {
               href="/login" 
               className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
             >
-              既にアカウントをお持ちの方はログイン
+              既にアカウントをお持ちの方はこちら
             </Link>
           </div>
           
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            <p className="mb-2">企業アカウントをお持ちの方のみご利用いただけます：</p>
-            <div className="flex justify-center">
-              <Badge variant="outline" className="text-xs">
-                <BuildingIcon className="w-3 h-3 mr-1" />
-                企業インタビューのみ
-              </Badge>
+            <p>アカウント作成することで、以下の機能にアクセスできます：</p>
+            <div className="flex justify-center gap-2 mt-2">
+              <Badge variant="outline">インタビュー作成</Badge>
+              <Badge variant="secondary">記事生成</Badge>
             </div>
           </div>
         </div>
@@ -306,3 +206,5 @@ export default function SignupPage() {
     </div>
   )
 }
+
+

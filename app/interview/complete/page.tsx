@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,7 +14,7 @@ import {
   LoaderIcon
 } from 'lucide-react'
 
-export default function InterviewCompletePage() {
+function InterviewCompleteContent() {
   const searchParams = useSearchParams()
   const articleId = searchParams.get('articleId')
   const [generating, setGenerating] = useState(true)
@@ -165,5 +165,17 @@ export default function InterviewCompletePage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function InterviewCompletePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <LoaderIcon className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    }>
+      <InterviewCompleteContent />
+    </Suspense>
   )
 }

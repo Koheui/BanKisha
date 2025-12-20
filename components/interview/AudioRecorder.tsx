@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 
 interface AudioRecorderProps {
-  onRecordingComplete: (audioBlob: Blob, duration: number) => void
+  onRecordingComplete: (audioBlob: Blob, duration: number, transcript?: string) => void
   maxDuration?: number
 }
 
@@ -37,13 +37,50 @@ export function AudioRecorder({ onRecordingComplete, maxDuration = 180 }: AudioR
   } = useAudioRecorder({ maxDuration })
 
   const [isPlaying, setIsPlaying] = useState(false)
+  const [transcript, setTranscript] = useState('')
   const audioRef = useRef<HTMLAudioElement>(null)
+  const recognitionRef = useRef<any>(null)
 
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.onended = () => setIsPlaying(false)
     }
   }, [audioUrl])
+
+  // Initialize Web Speech API for transcription
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || 
+                               (window as any).webkitSpeechRecognition
+      
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition()
+        recognition.continuous = true
+        recognition.interimResults = true
+        recognition.lang = 'ja-JP'
+        
+        recognition.onresult = (event: any) => {
+          const currentTranscript = Array.from(event.results)
+            .map((result: any) => result[0].transcript)
+            .join('')
+          setTranscript(currentTranscript)
+        }
+        
+        recognition.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error)
+          // Don't show error to user, just log it
+        }
+        
+        recognitionRef.current = recognition
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+    }
+  }, [])
 
   const handlePlayPause = () => {
     if (!audioRef.current) return
@@ -57,10 +94,48 @@ export function AudioRecorder({ onRecordingComplete, maxDuration = 180 }: AudioR
     }
   }
 
+  const handleStartRecording = () => {
+    setTranscript('')
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.start()
+      } catch (err) {
+        // Already started, ignore
+      }
+    }
+    startRecording()
+  }
+
+  const handleStopRecording = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+    }
+    stopRecording()
+  }
+
+  const handlePauseRecording = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+    }
+    pauseRecording()
+  }
+
+  const handleResumeRecording = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.start()
+      } catch (err) {
+        // Already started, ignore
+      }
+    }
+    resumeRecording()
+  }
+
   const handleConfirm = () => {
     if (audioBlob) {
-      onRecordingComplete(audioBlob, duration)
+      onRecordingComplete(audioBlob, duration, transcript.trim())
       clearRecording()
+      setTranscript('')
     }
   }
 
@@ -111,11 +186,19 @@ export function AudioRecorder({ onRecordingComplete, maxDuration = 180 }: AudioR
 
           {/* Status Message */}
           {isRecording && (
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {isPaused ? '一時停止中' : '録音中...'}
-              </span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {isPaused ? '一時停止中' : '録音中...'}
+                </span>
+              </div>
+              {transcript && (
+                <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">認識中のテキスト:</p>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">{transcript}</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -144,7 +227,7 @@ export function AudioRecorder({ onRecordingComplete, maxDuration = 180 }: AudioR
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {!isRecording && !audioBlob && (
           <Button
-            onClick={startRecording}
+            onClick={handleStartRecording}
             variant="gradient"
             size="lg"
             className="col-span-2 md:col-span-4"
@@ -158,7 +241,7 @@ export function AudioRecorder({ onRecordingComplete, maxDuration = 180 }: AudioR
           <>
             {!isPaused ? (
               <Button
-                onClick={pauseRecording}
+                onClick={handlePauseRecording}
                 variant="outline"
                 size="lg"
                 className="col-span-1 md:col-span-2"
@@ -168,7 +251,7 @@ export function AudioRecorder({ onRecordingComplete, maxDuration = 180 }: AudioR
               </Button>
             ) : (
               <Button
-                onClick={resumeRecording}
+                onClick={handleResumeRecording}
                 variant="gradient"
                 size="lg"
                 className="col-span-1 md:col-span-2"
@@ -179,7 +262,7 @@ export function AudioRecorder({ onRecordingComplete, maxDuration = 180 }: AudioR
             )}
             
             <Button
-              onClick={stopRecording}
+              onClick={handleStopRecording}
               variant="destructive"
               size="lg"
               className="col-span-1 md:col-span-2"

@@ -1,9 +1,9 @@
 import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
-import { GoogleGenerativeAI, EmbedContentRequest } from '@google/generative-ai'
-import { OpenAI } from 'openai'
-import * as cors from 'cors'
-import * as pdfParse from 'pdf-parse'
+import { GoogleGenerativeAI } from '@google/generative-ai'
+import cors from 'cors'
+// @ts-expect-error - pdf-parse doesn't have type definitions
+import pdfParse from 'pdf-parse'
 
 // Initialize Firebase Admin
 admin.initializeApp()
@@ -15,461 +15,288 @@ const genAI = new GoogleGenerativeAI(
   functions.config().gemini?.api_key || process.env.GEMINI_API_KEY || ''
 )
 
-// Initialize OpenAI (for Whisper transcription)
-const openai = new OpenAI({
-  apiKey: functions.config().openai?.api_key || process.env.OPENAI_API_KEY,
-})
-
-/**
- * Generate article content from interview Q&A using GPT
- */
-export const generateArticle = functions.https.onRequest(async (req, res) => {
-  corsHandler(req, res, async () => {
-    try {
-      if (req.method !== 'POST') {
-        res.status(405).send('Method Not Allowed')
-        return
-      }
-
-      const { qa, companyName } = req.body
-
-      if (!qa || !Array.isArray(qa)) {
-        res.status(400).send('Invalid Q&A data')
-        return
-      }
-
-      const qaText = qa.map((item: any) => `Q: ${item.q}\nA: ${item.transcript || item.textAnswer || ''}`).join('\n\n')
-
-      // Search knowledge base for article writing best practices
-      let knowledgeContext = ''
-      try {
-        const searchModel = genAI.getGenerativeModel({ model: 'embedding-001' })
-        const searchQuery = '記事執筆 取材記事 書き方 ベストプラクティス'
-        const searchResult = await searchModel.embedContent({
-          content: { parts: [{ text: searchQuery }], role: 'user' }
-        } as EmbedContentRequest)
-        
-        const searchEmbedding = searchResult.embedding.values
-        
-        // Get relevant chunks from Firestore
-        const chunksSnapshot = await admin.firestore()
-          .collection('knowledgeChunks')
-          .limit(50)
-          .get()
-
-        const results = []
-        for (const doc of chunksSnapshot.docs) {
-          const chunk = doc.data()
-          if (chunk.embedding && Array.isArray(chunk.embedding)) {
-            const similarity = cosineSimilarity(searchEmbedding, chunk.embedding)
-            if (similarity > 0.7) {
-              results.push({ text: chunk.text, score: similarity })
-            }
-          }
-        }
-
-        results.sort((a, b) => b.score - a.score)
-        if (results.length > 0) {
-          knowledgeContext = '\n\n【記事執筆のベストプラクティス（参考資料）】\n' +
-            results.slice(0, 3).map((r, i) => `${i + 1}. ${r.text}`).join('\n\n')
-        }
-      } catch (error) {
-        console.error('Error searching knowledge base for article:', error)
-        // Continue without knowledge base if search fails
-      }
-
-      const articlePrompt = `あなたはプロの編集者です。以下のQ&A逐語録を基に、「取材記事スタイル」で記事を生成してください。
-自薦は禁止。必ず「◯◯社◯◯氏に伺った」といった体裁にしてください。
-
-${knowledgeContext ? '参考資料の記事執筆のベストプラクティスを活用して、より質の高い記事を作成してください。' : ''}
-
-QA:
-${qaText}
-
-出力フォーマット（JSON）:
-{
-  "title": "記事タイトル（38字以内）",
-  "lead": "記事のリード文（200字以内）",
-  "body": "記事本文（見出し3-4個＋本文、Markdownフォーマット）"
-}
-
-記事末尾に必ず以下を追加してください:
-発行元 BanKisha`
-
-      const snsPrompt = `あなたは広報担当です。以下の記事からSNS投稿文を作成してください。
-必ず「本メディアが取材した」という体裁にしてください。
-
-記事:
-${JSON.stringify(articlePrompt)}
-
-出力フォーマット（JSON）:
-{
-  "x140": "Twitter投稿文（140字以内）",
-  "linkedin300": "LinkedIn投稿文（300字以内）"
-}
-
-共通末尾に必ず以下を追加してください:
-発行元 BanKisha`
-
-      // Get Gemini model
-      const model = genAI.getGenerativeModel({ 
-        model: 'gemini-pro',
-        generationConfig: {
-          temperature: 0.7,
-        }
-      })
-
-      // Generate article and SNS content using Gemini
-      const [articleResult, snsResult] = await Promise.all([
-        model.generateContent(articlePrompt),
-        model.generateContent(snsPrompt)
-      ])
-
-      let articleContent
-      let snsContent
-
-      try {
-        const articleText = articleResult.response.text()
-        // Try to extract JSON from the response
-        const jsonMatch = articleText.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-          articleContent = JSON.parse(jsonMatch[0])
-        } else {
-          // Fallback: parse the entire response
-          articleContent = JSON.parse(articleText)
-        }
-      } catch (e) {
-        console.error('Error parsing article content:', e)
-        // Try to extract content manually
-        const articleText = articleResult.response.text()
-        articleContent = {
-          title: articleText.split('\n')[0] || '無題のインタビュー',
-          lead: articleText.split('\n').slice(1, 3).join(' ') || '記事の生成に失敗しました。',
-          body: articleText || '記事の生成中にエラーが発生しました。'
-        }
-      }
-
-      try {
-        const snsText = snsResult.response.text()
-        const jsonMatch = snsText.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-          snsContent = JSON.parse(jsonMatch[0])
-        } else {
-          snsContent = JSON.parse(snsText)
-        }
-      } catch (e) {
-        console.error('Error parsing SNS content:', e)
-        snsContent = {
-          x140: 'BanKishaが取材した記事です。',
-          linkedin300: 'BanKishaが取材した記事の詳細をリンクからご確認ください。'
-        }
-      }
-
-      res.json({
-        success: true,
-        article: {
-          title: articleContent.title || '無題のインタビュー',
-          lead: articleContent.lead || '',
-          bodyMd: articleContent.body || '',
-          headings: extractHeadings(articleContent.body || '')
-        },
-        sns: {
-          x140: snsContent.x140 || `BanKishaが${companyName}に取材した記事です。`,
-          linkedin300: snsContent.linkedin300 || `BanKishaが${companyName}に取材した記事の詳細をリンクからご確認ください。`
-        }
-      })
-
-    } catch (error) {
-      console.error('Error generating article:', error)
-      res.status(500).json({ 
-        success: false, 
-        error: '記事の生成に失敗しました' 
-      })
-    }
-  })
-})
-
-/**
- * Transcribe audio using Whisper API
- */
-export const transcribeAudio = functions.https.onRequest(async (req, res) => {
-  corsHandler(req, res, async () => {
-    try {
-      if (req.method !== 'POST') {
-        res.status(405).send('Method Not Allowed')
-        return
-      }
-
-      const { audioUrl } = req.body
-
-      if (!audioUrl) {
-        res.status(400).send('Audio URL is required')
-        return
-      }
-
-      // Download audio file from URL
-      const response = await fetch(audioUrl)
-      const audioBuffer = await response.arrayBuffer()
-      
-      // Create a File-like object for Whisper
-      const audioFile = new File([audioBuffer], 'audio.mp3', { type: 'audio/mp3' })
-
-      const transcription = await openai.audio.transcriptions.create({
-        file: audioFile,
-        model: 'whisper-1',
-        language: 'ja',
-        response_format: 'text'
-      })
-
-      res.json({
-        success: true,
-        transcript: transcription
-      })
-
-    } catch (error) {
-      console.error('Error transcribing audio:', error)
-      res.status(500).json({ 
-        success: false, 
-        error: '音声の文字化に失敗しました' 
-      })
-    }
-  })
-})
-
-/**
- * User creation trigger
- */
-export const onCreateUser = functions.auth.user().onCreate(async (user) => {
-  try {
-    // Create user document in Firestore
-    await admin.firestore().collection('users').doc(user.uid).set({
-      email: user.email,
-      displayName: user.displayName || user.email?.split('@')[0],
-      role: 'company', // Default role
-      companyId: null,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    })
-    
-    console.log(`User document created for ${user.uid}`)
-  } catch (error) {
-    console.error('Error creating user document:', error)
-  }
-})
-
 /**
  * Process PDF and create knowledge base chunks
+ * 
+ * 大容量PDF対応版（120MB対応）
  */
-export const processKnowledgeBasePDF = functions.https.onRequest(async (req, res) => {
-  corsHandler(req, res, async () => {
-    try {
-      if (req.method !== 'POST') {
-        res.status(405).send('Method Not Allowed')
-        return
-      }
-
-      const { pdfUrl, knowledgeBaseId, title } = req.body
-
-      if (!pdfUrl || !knowledgeBaseId) {
-        res.status(400).send('PDF URL and knowledge base ID are required')
-        return
-      }
-
-      // Download PDF
-      const pdfResponse = await fetch(pdfUrl)
-      const pdfBuffer = await pdfResponse.arrayBuffer()
+export const processKnowledgeBasePDF = functions
+  .runWith({
+    timeoutSeconds: 540, // 最大9分
+    memory: '4GB', // 2GB→4GBに増強
+  })
+  .https.onRequest(async (req, res) => {
+    corsHandler(req, res, async () => {
+      const startTime = Date.now()
       
-      // Parse PDF
-      const pdfData = await pdfParse(Buffer.from(pdfBuffer))
-      const text = pdfData.text
-      const pageCount = pdfData.numpages
-
-      // Split text into chunks (approximately 500 characters per chunk)
-      const chunkSize = 500
-      const chunks: string[] = []
-      const lines = text.split('\n')
-      let currentChunk = ''
-
-      for (const line of lines) {
-        if (currentChunk.length + line.length > chunkSize && currentChunk.length > 0) {
-          chunks.push(currentChunk.trim())
-          currentChunk = line + ' '
-        } else {
-          currentChunk += line + ' '
+      try {
+        if (req.method !== 'POST') {
+          res.status(405).send('Method Not Allowed')
+          return
         }
-      }
-      if (currentChunk.trim().length > 0) {
-        chunks.push(currentChunk.trim())
-      }
 
-      // Get embedding model
-      const embeddingModel = genAI.getGenerativeModel({ model: 'embedding-001' })
+        const { pdfUrl, knowledgeBaseId } = req.body
 
-      // Process chunks and create embeddings
-      const batchSize = 10
-      for (let i = 0; i < chunks.length; i += batchSize) {
-        const batch = chunks.slice(i, i + batchSize)
+        if (!pdfUrl || !knowledgeBaseId) {
+          res.status(400).send('PDF URL and knowledge base ID are required')
+          return
+        }
+
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        console.log('📥 [PDF Processing] v1.0 (gemini-2.5-flash)')
+        console.log('📥 Starting...')
+        console.log(`   KB ID: ${knowledgeBaseId}`)
+        console.log(`   URL: ${pdfUrl}`)
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+
+        // Step 1: Download PDF
+        console.log('\n📥 [Step 1/6] Downloading PDF...')
+        const pdfResponse = await fetch(pdfUrl)
         
-        const embeddings = await Promise.all(
-          batch.map(async (chunk, index) => {
-            try {
-              const result = await embeddingModel.embedContent({
-                content: { parts: [{ text: chunk }], role: 'user' }
-              } as EmbedContentRequest)
-              
-              return {
-                chunk,
-                embedding: result.embedding.values,
-                chunkIndex: i + index
+        if (!pdfResponse.ok) {
+          throw new Error(`Failed to download PDF: ${pdfResponse.status} ${pdfResponse.statusText}`)
+        }
+
+        const pdfBuffer = await pdfResponse.arrayBuffer()
+        const fileSizeMB = (pdfBuffer.byteLength / (1024 * 1024)).toFixed(2)
+        console.log(`   ✅ Downloaded: ${fileSizeMB} MB`)
+
+        // Step 2: Parse PDF
+        console.log('\n📄 [Step 2/6] Parsing PDF...')
+        const parseStartTime = Date.now()
+        
+        const pdfData = await pdfParse(Buffer.from(pdfBuffer))
+        const text = pdfData.text
+        const pageCount = pdfData.numpages
+        
+        const parseTime = ((Date.now() - parseStartTime) / 1000).toFixed(1)
+        console.log(`   ✅ Parsed: ${pageCount} pages, ${text.length} characters (${parseTime}s)`)
+
+        // Step 3: Split text into chunks
+        console.log('\n✂️ [Step 3/6] Splitting into chunks...')
+        const chunkStartTime = Date.now()
+        
+        const chunkSize = 800 // 500→800に増量（大きなPDFに対応）
+        const chunks: string[] = []
+        const lines = text.split('\n')
+        let currentChunk = ''
+
+        for (const line of lines) {
+          if (currentChunk.length + line.length > chunkSize && currentChunk.length > 0) {
+            chunks.push(currentChunk.trim())
+            currentChunk = line + ' '
+          } else {
+            currentChunk += line + ' '
+          }
+        }
+
+        if (currentChunk.trim().length > 0) {
+          chunks.push(currentChunk.trim())
+        }
+
+        const chunkTime = ((Date.now() - chunkStartTime) / 1000).toFixed(1)
+        console.log(`   ✅ Created ${chunks.length} chunks (${chunkTime}s)`)
+
+        // Step 4: Create embeddings
+        console.log('\n🧠 [Step 4/6] Creating embeddings...')
+        const embeddingStartTime = Date.now()
+        
+        const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' })
+        
+        // バッチサイズを大きくして効率化（10→20）
+        const batchSize = 20
+        let processedCount = 0
+
+        for (let i = 0; i < chunks.length; i += batchSize) {
+          const batch = chunks.slice(i, i + batchSize)
+          const batchNum = Math.floor(i / batchSize) + 1
+          const totalBatches = Math.ceil(chunks.length / batchSize)
+          
+          console.log(`   Processing batch ${batchNum}/${totalBatches} (chunks ${i + 1}-${Math.min(i + batchSize, chunks.length)})`)
+
+          const embeddings = await Promise.all(
+            batch.map(async (chunk, index) => {
+              try {
+                const result = await embeddingModel.embedContent({
+                  content: { parts: [{ text: chunk }], role: 'user' },
+                })
+
+                return {
+                  chunk,
+                  embedding: result.embedding.values,
+                  chunkIndex: i + index,
+                }
+              } catch (error) {
+                console.error(`   ⚠️ Error creating embedding for chunk ${i + index}:`, error)
+                return null
               }
-            } catch (error) {
-              console.error(`Error creating embedding for chunk ${i + index}:`, error)
-              return null
+            })
+          )
+
+          // Firestoreにバッチ保存
+          const firestoreBatch = admin.firestore().batch()
+          
+          embeddings.forEach((emb) => {
+            if (emb) {
+              const chunkRef = admin.firestore().collection('knowledgeChunks').doc()
+              firestoreBatch.set(chunkRef, {
+                knowledgeBaseId,
+                chunkIndex: emb.chunkIndex,
+                text: emb.chunk,
+                embedding: emb.embedding,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              })
+              processedCount++
             }
           })
-        )
 
-        // Save chunks to Firestore
-        const firestoreBatch = admin.firestore().batch()
-        embeddings.forEach((emb, index) => {
-          if (emb) {
-            const chunkRef = admin.firestore()
-              .collection('knowledgeChunks')
-              .doc()
-            
-            firestoreBatch.set(chunkRef, {
-              knowledgeBaseId,
-              chunkIndex: i + index,
-              text: emb.chunk,
-              embedding: emb.embedding,
-              createdAt: admin.firestore.FieldValue.serverTimestamp()
-            })
-          }
-        })
-        await firestoreBatch.commit()
-      }
-
-      // Update knowledge base status
-      await admin.firestore()
-        .collection('knowledgeBases')
-        .doc(knowledgeBaseId)
-        .update({
-          status: 'completed',
-          pageCount,
-          processedAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        })
-
-      res.json({
-        success: true,
-        chunksCreated: chunks.length,
-        pageCount
-      })
-
-    } catch (error) {
-      console.error('Error processing PDF:', error)
-      res.status(500).json({
-        success: false,
-        error: 'PDF処理に失敗しました'
-      })
-    }
-  })
-})
-
-/**
- * Search knowledge base
- */
-export const searchKnowledgeBase = functions.https.onRequest(async (req, res) => {
-  corsHandler(req, res, async () => {
-    try {
-      if (req.method !== 'POST') {
-        res.status(405).send('Method Not Allowed')
-        return
-      }
-
-      const { query, limit = 5 } = req.body
-
-      if (!query) {
-        res.status(400).send('Query is required')
-        return
-      }
-
-      // Get embedding for query
-      const embeddingModel = genAI.getGenerativeModel({ model: 'embedding-001' })
-      const queryResult = await embeddingModel.embedContent({
-        content: { parts: [{ text: query }], role: 'user' }
-      } as EmbedContentRequest)
-      
-      const queryEmbedding = queryResult.embedding.values
-
-      // Get all knowledge chunks
-      const chunksSnapshot = await admin.firestore()
-        .collection('knowledgeChunks')
-        .get()
-
-      // Calculate cosine similarity
-      const results = []
-      for (const doc of chunksSnapshot.docs) {
-        const chunk = doc.data()
-        if (chunk.embedding && Array.isArray(chunk.embedding)) {
-          const similarity = cosineSimilarity(queryEmbedding, chunk.embedding)
-          results.push({
-            id: doc.id,
-            text: chunk.text,
-            knowledgeBaseId: chunk.knowledgeBaseId,
-            chunkIndex: chunk.chunkIndex,
-            score: similarity
-          })
+          await firestoreBatch.commit()
+          console.log(`   ✅ Batch ${batchNum} saved (${processedCount}/${chunks.length} chunks processed)`)
         }
+
+        const embeddingTime = ((Date.now() - embeddingStartTime) / 1000).toFixed(1)
+        console.log(`   ✅ All embeddings created (${embeddingTime}s)`)
+
+        // Step 5: Generate summary and usage guide
+        console.log('\n📝 [Step 5/6] Generating summary...')
+        const summaryStartTime = Date.now()
+        
+        let summary = ''
+        let usageGuide = ''
+
+        try {
+          const model = genAI.getGenerativeModel({
+            model: 'gemini-2.5-flash',
+            generationConfig: {
+              temperature: 0.7,
+            },
+          })
+
+          // Get knowledge base info
+          const kbDoc = await admin.firestore()
+            .collection('knowledgeBases')
+            .doc(knowledgeBaseId)
+            .get()
+          
+          const kbData = kbDoc.data()
+          const kbTitle = kbData?.fileName || '無題'
+
+          // テキストが長すぎる場合は先頭と後半を組み合わせる
+          const maxTextLength = 30000
+          let textForSummary = text
+          
+          if (text.length > maxTextLength) {
+            const firstPart = text.substring(0, maxTextLength / 2)
+            const lastPart = text.substring(text.length - maxTextLength / 2)
+            textForSummary = firstPart + '\n\n[...中略...]\n\n' + lastPart
+          }
+
+          // Generate summary
+          const summaryPrompt = `以下のPDFナレッジベースの内容を分析して、簡潔で分かりやすい要約を作成してください。
+
+タイトル: ${kbTitle}
+ページ数: ${pageCount}ページ
+
+内容:
+${textForSummary}
+
+以下の形式で要約を出力してください：
+• このナレッジベースの主要なテーマやトピック
+• 重要なポイント（3-5個）
+• 対象読者や適用シーン
+
+要約は200-300字程度で、箇条書きで整理してください。`
+
+          const summaryResult = await model.generateContent(summaryPrompt)
+          summary = summaryResult.response.text()
+          console.log('   ✅ Summary generated')
+
+          // Generate usage guide
+          const usagePrompt = `以下のナレッジベースの内容を分析して、AIインタビュアーでの具体的な活用方法を提案してください。
+
+タイトル: ${kbTitle}
+概要: ${summary}
+
+このナレッジベースを使って、AIインタビュアーがどのように質問を改善できるか、具体的な活用シーンを2-3個提案してください。
+
+150-200字程度で記述してください。`
+
+          const usageResult = await model.generateContent(usagePrompt)
+          usageGuide = usageResult.response.text()
+          console.log('   ✅ Usage guide generated')
+
+        } catch (error) {
+          console.error('   ⚠️ Error generating summary:', error)
+          summary = `このナレッジベースには${pageCount}ページ、${chunks.length}チャンクの情報が含まれています。`
+          usageGuide = 'AIインタビュアーの質問生成に活用できます。'
+        }
+
+        const summaryTime = ((Date.now() - summaryStartTime) / 1000).toFixed(1)
+        console.log(`   ✅ Summary complete (${summaryTime}s)`)
+
+        // Step 6: Update knowledge base status
+        console.log('\n💾 [Step 6/6] Updating knowledge base...')
+        
+        await admin.firestore()
+          .collection('knowledgeBases')
+          .doc(knowledgeBaseId)
+          .update({
+            status: 'ready',
+            pageCount,
+            chunkCount: chunks.length,
+            summary,
+            usageGuide,
+            processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          })
+
+        const totalTime = ((Date.now() - startTime) / 1000).toFixed(1)
+        
+        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        console.log('✅ [PDF Processing] Complete!')
+        console.log(`   Total time: ${totalTime}s`)
+        console.log(`   File size: ${fileSizeMB} MB`)
+        console.log(`   Pages: ${pageCount}`)
+        console.log(`   Chunks: ${chunks.length}`)
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+
+        res.json({
+          success: true,
+          pageCount,
+          chunkCount: chunks.length,
+          summary,
+          processingTime: totalTime,
+        })
+
+      } catch (error: any) {
+        const totalTime = ((Date.now() - startTime) / 1000).toFixed(1)
+        
+        console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        console.error('❌ [PDF Processing] Error!')
+        console.error(`   Time elapsed: ${totalTime}s`)
+        console.error(`   Error:`, error)
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+
+        // Update status to error
+        try {
+          if (req.body.knowledgeBaseId) {
+            await admin.firestore()
+              .collection('knowledgeBases')
+              .doc(req.body.knowledgeBaseId)
+              .update({
+                status: 'error',
+                errorMessage: error.message || 'Unknown error',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              })
+          }
+        } catch (updateError) {
+          console.error('Failed to update error status:', updateError)
+        }
+
+        res.status(500).json({
+          success: false,
+          error: error.message || 'Failed to process PDF',
+        })
       }
-
-      // Sort by score and return top results
-      results.sort((a, b) => b.score - a.score)
-      const topResults = results.slice(0, limit)
-
-      res.json({
-        success: true,
-        results: topResults
-      })
-
-    } catch (error) {
-      console.error('Error searching knowledge base:', error)
-      res.status(500).json({
-        success: false,
-        error: '検索に失敗しました'
-      })
-    }
+    })
   })
-})
 
-// Helper function to calculate cosine similarity
-function cosineSimilarity(vecA: number[], vecB: number[]): number {
-  if (vecA.length !== vecB.length) {
-    return 0
-  }
-
-  let dotProduct = 0
-  let normA = 0
-  let normB = 0
-
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i]
-    normA += vecA[i] * vecA[i]
-    normB += vecB[i] * vecB[i]
-  }
-
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))
-}
-
-// Helper function to extract headings from markdown
-function extractHeadings(markdown: string): string[] {
-  const headingRegex = /^#+\s+(.+)/gm
-  const matches = []
-  let match
-  
-  while ((match = headingRegex.exec(markdown)) !== null) {
-    matches.push(match[1].trim())
-  }
-  
-  return matches
-}

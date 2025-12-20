@@ -17,7 +17,6 @@ import {
   LoaderIcon,
   ShieldCheckIcon
 } from 'lucide-react'
-import { KnowledgeBaseManager } from './KnowledgeBaseManager'
 
 interface AdminPanelProps {
   onStatsUpdate?: (stats: { drafts: number; submitted: number; approved: number; public: number }) => void
@@ -340,8 +339,6 @@ export function AdminPanel({ onStatsUpdate }: AdminPanelProps) {
         </CardContent>
       </Card>
 
-      {/* Knowledge Base Management */}
-      <KnowledgeBaseManager />
     </div>
   )
 }

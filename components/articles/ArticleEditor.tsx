@@ -1,182 +1,233 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { getArticle, updateArticle } from '@/src/lib/firestore'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
-import type { Article } from '@/src/types'
-import {
-  SaveIcon,
-  ArrowLeftIcon,
-  SendIcon,
-  EyeIcon,
-  LoaderIcon,
-  AlertCircleIcon,
-  FileTextIcon
+import { getFirebaseDb, getFirebaseStorage } from '@/src/lib/firebase'
+import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
+import { 
+  LoaderIcon, 
+  SaveIcon, 
+  ImageIcon, 
+  XIcon, 
+  UploadIcon,
+  TrashIcon
 } from 'lucide-react'
+import type { Article, ArticleSection } from '@/src/types'
 
 interface ArticleEditorProps {
   articleId: string
 }
 
+interface ImageData {
+  id: string
+  url: string
+  alt?: string
+  position: number // セクションのインデックス（-1はカバー画像）
+}
+
 export function ArticleEditor({ articleId }: ArticleEditorProps) {
   const { user } = useAuth()
-  const router = useRouter()
-  const [article, setArticle] = useState<Article | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [article, setArticle] = useState<Article | null>(null)
+  const [images, setImages] = useState<ImageData[]>([])
   const [error, setError] = useState<string | null>(null)
-
-  // Form state
-  const [title, setTitle] = useState('')
-  const [lead, setLead] = useState('')
-  const [bodyMd, setBodyMd] = useState('')
-  const [snsX, setSnsX] = useState('')
-  const [snsLinkedIn, setSnsLinkedIn] = useState('')
+  const [selectedSection, setSelectedSection] = useState<number>(-1) // -1はカバー画像
 
   useEffect(() => {
-    loadArticle()
+    if (articleId) {
+      loadArticle()
+    }
   }, [articleId])
 
   const loadArticle = async () => {
     try {
       setLoading(true)
-      const articleData = await getArticle(articleId)
-      
-      if (!articleData) {
-        setError('記事が見つかりません')
-        return
-      }
-
-      // Check permissions
-      if (user?.role !== 'admin' && articleData.companyId !== user?.companyId) {
-        setError('この記事を編集する権限がありません')
-        return
-      }
-
-      setArticle(articleData)
-      
-      // Set form values
-      const articleContent = articleData.finalArticle || articleData.draftArticle
-      setTitle(articleContent.title || '')
-      setLead(articleContent.lead || '')
-      setBodyMd(articleContent.bodyMd || '')
-      setSnsX(articleData.snsDraft.x140 || '')
-      setSnsLinkedIn(articleData.snsDraft.linkedin300 || '')
-
       setError(null)
-    } catch (err) {
-      console.error('Error loading article:', err)
+
+      const firestoreDb = getFirebaseDb()
+      const docRef = doc(firestoreDb, 'articles', articleId)
+      const docSnap = await getDoc(docRef)
+
+      if (docSnap.exists()) {
+        const data = docSnap.data()
+        setArticle({
+          id: docSnap.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+        } as Article)
+
+        // 画像データを読み込む（article.imagesフィールドから）
+        if (data.images && Array.isArray(data.images)) {
+          setImages(data.images)
+        }
+      } else {
+        setError('記事が見つかりません')
+      }
+    } catch (error) {
+      console.error('Error loading article:', error)
       setError('記事の読み込みに失敗しました')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSave = async () => {
+  const handleImageUpload = async (file: File, position: number) => {
+    if (!article || !user?.companyId) return
+
+    try {
+      setUploading(true)
+      setError(null)
+
+      // ファイルサイズチェック（5MB以下）
+      if (file.size > 5 * 1024 * 1024) {
+        setError('画像サイズは5MB以下にしてください')
+        return
+      }
+
+      // ファイルタイプチェック
+      if (!file.type.startsWith('image/')) {
+        setError('画像ファイルを選択してください')
+        return
+      }
+
+      // Firebase Storageにアップロード
+      const timestamp = Date.now()
+      const fileName = `${articleId}/${position === -1 ? 'cover' : `section-${position}`}-${timestamp}.${file.name.split('.').pop()}`
+      const firebaseStorage = getFirebaseStorage()
+      const storageRef = ref(firebaseStorage, `articles/${fileName}`)
+
+      await uploadBytes(storageRef, file)
+      const downloadURL = await getDownloadURL(storageRef)
+
+      // 画像データを追加
+      const newImage: ImageData = {
+        id: `img-${timestamp}`,
+        url: downloadURL,
+        alt: '',
+        position: position
+      }
+
+      const updatedImages = [...images, newImage]
+      setImages(updatedImages)
+
+      // Firestoreに保存
+      await updateDoc(doc(getFirebaseDb(), 'articles', articleId), {
+        images: updatedImages,
+        updatedAt: new Date()
+      })
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      setError('画像のアップロードに失敗しました')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleImageDelete = async (imageId: string) => {
+    if (!article) return
+
+    try {
+      setError(null)
+
+      const imageToDelete = images.find(img => img.id === imageId)
+      if (!imageToDelete) return
+
+      // Firebase Storageから削除
+      try {
+        // URLからストレージパスを抽出
+        const url = imageToDelete.url
+        const pathMatch = url.match(/\/o\/(.+)\?/)
+        if (pathMatch) {
+          const storagePath = decodeURIComponent(pathMatch[1])
+          const firebaseStorage = getFirebaseStorage()
+          const storageRef = ref(firebaseStorage, storagePath)
+          await deleteObject(storageRef)
+        }
+      } catch (deleteError) {
+        console.warn('Error deleting from storage:', deleteError)
+        // ストレージからの削除に失敗しても続行
+      }
+
+      // 画像データから削除
+      const updatedImages = images.filter(img => img.id !== imageId)
+      setImages(updatedImages)
+
+      // Firestoreに保存
+      await updateDoc(doc(getFirebaseDb(), 'articles', articleId), {
+        images: updatedImages,
+        updatedAt: new Date()
+      })
+    } catch (error) {
+      console.error('Error deleting image:', error)
+      setError('画像の削除に失敗しました')
+    }
+  }
+
+  const handleUpdateImageAlt = async (imageId: string, alt: string) => {
+    if (!article) return
+
+    try {
+      const updatedImages = images.map(img => 
+        img.id === imageId ? { ...img, alt } : img
+      )
+      setImages(updatedImages)
+
+      await updateDoc(doc(getFirebaseDb(), 'articles', articleId), {
+        images: updatedImages,
+        updatedAt: new Date()
+      })
+    } catch (error) {
+      console.error('Error updating image alt:', error)
+      setError('画像の説明文の更新に失敗しました')
+    }
+  }
+
+  const handleSaveArticle = async () => {
+    if (!article) return
+
     try {
       setSaving(true)
       setError(null)
 
-      const updatedDraft = {
-        title,
-        lead,
-        bodyMd,
-        headings: extractHeadings(bodyMd)
-      }
-
-      await updateArticle(articleId, {
-        draftArticle: updatedDraft,
-        snsDraft: {
-          x140: snsX,
-          linkedin300: snsLinkedIn
-        },
+      await updateDoc(doc(getFirebaseDb(), 'articles', articleId), {
+        draftArticle: article.draftArticle,
         updatedAt: new Date()
       })
 
-      // Show success message (you can use toast here)
-      alert('保存しました')
-    } catch (err) {
-      console.error('Error saving article:', err)
-      setError('保存に失敗しました')
+      alert('✅ 記事を保存しました！')
+    } catch (error) {
+      console.error('Error saving article:', error)
+      setError('記事の保存に失敗しました')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleSubmit = async () => {
-    try {
-      setSubmitting(true)
-      setError(null)
-
-      // Save first
-      await handleSave()
-
-      // Update status to submitted
-      await updateArticle(articleId, {
-        status: 'submitted',
-        updatedAt: new Date()
-      })
-
-      // Redirect to dashboard
-      router.push('/dashboard')
-    } catch (err) {
-      console.error('Error submitting article:', err)
-      setError('申請に失敗しました')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const extractHeadings = (markdown: string): string[] => {
-    const headingRegex = /^#+\s+(.+)/gm
-    const matches = []
-    let match
-    
-    while ((match = headingRegex.exec(markdown)) !== null) {
-      matches.push(match[1].trim())
-    }
-    
-    return matches
-  }
-
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <LoaderIcon className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">記事を読み込み中...</p>
-        </CardContent>
-      </Card>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <LoaderIcon className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">読み込み中...</p>
+        </div>
+      </div>
     )
   }
 
   if (error && !article) {
     return (
-      <Card>
-        <CardHeader>
-          <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-red-100 to-pink-100 dark:from-red-900 dark:to-pink-900 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircleIcon className="w-8 h-8 text-red-600 dark:text-red-400" />
-            </div>
-            <CardTitle className="text-red-600 dark:text-red-400">エラー</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Link href="/dashboard">
-            <Button variant="outline" className="w-full">
-              <ArrowLeftIcon className="w-4 h-4 mr-2" />
-              ダッシュボードに戻る
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+        </div>
+      </div>
     )
   }
 
@@ -184,211 +235,219 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
     return null
   }
 
+  const coverImage = images.find(img => img.position === -1)
+  const sectionImages = article.draftArticle.sections.map((_, idx) => 
+    images.filter(img => img.position === idx)
+  )
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold gradient-text mb-2">記事を編集</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            記事の内容を編集して、承認申請を送信できます
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={article.status === 'draft' ? 'draft' : 'submitted'}>
-            {article.status === 'draft' ? '下書き' : '申請中'}
-          </Badge>
-          <Link href="/dashboard">
-            <Button variant="outline">
-              <ArrowLeftIcon className="w-4 h-4 mr-2" />
-              戻る
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <AlertCircleIcon className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-              <span className="text-sm text-red-600 dark:text-red-400">{error}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Article Title */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileTextIcon className="w-6 h-6" />
-            記事タイトル
-          </CardTitle>
-          <CardDescription>
-            38字以内で入力してください
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="記事のタイトルを入力"
-            maxLength={38}
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            {title.length} / 38 文字
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Article Lead */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle>リード文</CardTitle>
-          <CardDescription>
-            記事の冒頭に表示される要約文（200字以内）
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <textarea
-            value={lead}
-            onChange={(e) => setLead(e.target.value)}
-            className="w-full min-h-[120px] px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            placeholder="記事のリード文を入力..."
-            maxLength={200}
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            {lead.length} / 200 文字
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Article Body */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle>記事本文</CardTitle>
-          <CardDescription>
-            Markdown形式で記述できます。見出しは # で始めてください
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <textarea
-            value={bodyMd}
-            onChange={(e) => setBodyMd(e.target.value)}
-            className="w-full min-h-[400px] px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-sm"
-            placeholder="# 見出し1&#10;&#10;本文をここに記述..."
-          />
-          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <h3 className="text-sm font-semibold mb-2">Markdown記法の例:</h3>
-            <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-              <li><code># 見出し1</code></li>
-              <li><code>## 見出し2</code></li>
-              <li><code>**太字**</code> または <code>*斜体*</code></li>
-              <li><code>- リスト項目</code></li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* SNS Drafts */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle>SNS投稿文</CardTitle>
-          <CardDescription>
-            記事公開時に使用されるSNS投稿文
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              X (Twitter) - 140字以内
-            </label>
-            <textarea
-              value={snsX}
-              onChange={(e) => setSnsX(e.target.value)}
-              className="w-full min-h-[80px] px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              placeholder="X用の投稿文を入力..."
-              maxLength={140}
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              {snsX.length} / 140 文字
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              LinkedIn - 300字以内
-            </label>
-            <textarea
-              value={snsLinkedIn}
-              onChange={(e) => setSnsLinkedIn(e.target.value)}
-              className="w-full min-h-[120px] px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              placeholder="LinkedIn用の投稿文を入力..."
-              maxLength={300}
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              {snsLinkedIn.length} / 300 文字
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Actions */}
-      <Card className="border-0 shadow-lg">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between gap-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+              記事を編集
+            </h1>
             <Button
-              onClick={handleSave}
-              variant="outline"
-              size="lg"
-              disabled={saving || submitting}
+              onClick={handleSaveArticle}
+              disabled={saving}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
             >
               {saving ? (
                 <>
-                  <LoaderIcon className="w-5 h-5 mr-2 animate-spin" />
+                  <LoaderIcon className="w-4 h-4 mr-2 animate-spin" />
                   保存中...
                 </>
               ) : (
                 <>
-                  <SaveIcon className="w-5 h-5 mr-2" />
-                  下書き保存
+                  <SaveIcon className="w-4 h-4 mr-2" />
+                  保存
                 </>
               )}
             </Button>
-
-            {article.status === 'draft' && (
-              <Button
-                onClick={handleSubmit}
-                variant="gradient"
-                size="lg"
-                disabled={saving || submitting || !title.trim() || !lead.trim() || !bodyMd.trim()}
-              >
-                {submitting ? (
-                  <>
-                    <LoaderIcon className="w-5 h-5 mr-2 animate-spin" />
-                    申請中...
-                  </>
-                ) : (
-                  <>
-                    <SendIcon className="w-5 h-5 mr-2" />
-                    承認申請を送信
-                  </>
-                )}
-              </Button>
-            )}
-
-            {article.status === 'submitted' && (
-              <Badge variant="submitted" className="px-4 py-2">
-                承認待ちです
-              </Badge>
-            )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-red-800 dark:text-red-300">{error}</p>
+          </div>
+        )}
+
+        {/* Cover Image */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>カバー画像</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {coverImage ? (
+              <div className="space-y-4">
+                <div className="relative">
+                  <img
+                    src={coverImage.url}
+                    alt={coverImage.alt || 'カバー画像'}
+                    className="w-full h-64 object-cover rounded-lg"
+                  />
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="absolute top-2 right-2"
+                    onClick={() => handleImageDelete(coverImage.id)}
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    画像の説明（alt属性）
+                  </label>
+                  <Textarea
+                    value={coverImage.alt || ''}
+                    onChange={(e) => handleUpdateImageAlt(coverImage.id, e.target.value)}
+                    placeholder="画像の説明を入力..."
+                    rows={2}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  カバー画像をアップロード
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      handleImageUpload(file, -1)
+                    }
+                  }}
+                  disabled={uploading}
+                  className="hidden"
+                  id="cover-image-upload"
+                />
+                <label
+                  htmlFor="cover-image-upload"
+                  className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
+                >
+                  {uploading ? (
+                    <LoaderIcon className="w-8 h-8 animate-spin text-blue-600" />
+                  ) : (
+                    <div className="text-center">
+                      <UploadIcon className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        クリックして画像をアップロード
+                      </p>
+                    </div>
+                  )}
+                </label>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Article Content */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>記事内容</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Title */}
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                {article.draftArticle.title}
+              </h2>
+            </div>
+
+            {/* Lead */}
+            <div>
+              <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+                {article.draftArticle.lead}
+              </p>
+            </div>
+
+            {/* Sections */}
+            {article.draftArticle.sections.map((section: ArticleSection, idx: number) => (
+              <div key={idx} className="space-y-4">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  {section.heading}
+                </h3>
+
+                {/* Section Images */}
+                {sectionImages[idx] && sectionImages[idx].length > 0 && (
+                  <div className="space-y-4">
+                    {sectionImages[idx].map((img) => (
+                      <div key={img.id} className="relative">
+                        <img
+                          src={img.url}
+                          alt={img.alt || section.heading}
+                          className="w-full rounded-lg"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2"
+                          onClick={() => handleImageDelete(img.id)}
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </Button>
+                        <div className="mt-2">
+                          <Textarea
+                            value={img.alt || ''}
+                            onChange={(e) => handleUpdateImageAlt(img.id, e.target.value)}
+                            placeholder="画像の説明を入力..."
+                            rows={2}
+                            className="w-full text-sm"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add Image Button */}
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        handleImageUpload(file, idx)
+                      }
+                    }}
+                    disabled={uploading}
+                    className="hidden"
+                    id={`section-image-upload-${idx}`}
+                  />
+                  <label
+                    htmlFor={`section-image-upload-${idx}`}
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    {uploading ? (
+                      <LoaderIcon className="w-4 h-4 animate-spin text-blue-600" />
+                    ) : (
+                      <>
+                        <ImageIcon className="w-4 h-4" />
+                        <span className="text-sm">画像を追加</span>
+                      </>
+                    )}
+                  </label>
+                </div>
+
+                {/* Body */}
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                  {section.body}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
