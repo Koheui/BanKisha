@@ -3,13 +3,15 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { getFirebaseDb } from '@/src/lib/firebase'
-import { doc, getDoc } from 'firebase/firestore'
-import { createArticle } from '@/src/lib/firestore'
+import { getFirebaseDb, getFirebaseAuth } from '@/src/lib/firebase'
+import { doc, getDoc, collection, getDocs, orderBy, query, Timestamp } from 'firebase/firestore'
+import { createArticle, migrateInterviewMessages } from '@/src/lib/firestore'
+import { generateSlug, ensureUniqueSlug } from '@/src/lib/slug-utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeftIcon, LoaderIcon, FileTextIcon, SaveIcon, SparklesIcon, AlertCircleIcon, PlusIcon, XIcon, CheckIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { ArrowLeftIcon, LoaderIcon, FileTextIcon, SaveIcon, SparklesIcon, AlertCircleIcon, PlusIcon, XIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react'
 import Link from 'next/link'
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog'
 
@@ -21,6 +23,7 @@ function NewArticlePageContent() {
   const [loading, setLoading] = useState(true)
   const [generatingDraft, setGeneratingDraft] = useState(false)
   const [generatingArticle, setGeneratingArticle] = useState(false)
+  const [migrating, setMigrating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [interview, setInterview] = useState<any>(null)
   const [draft, setDraft] = useState<any>(null)
@@ -31,14 +34,17 @@ function NewArticlePageContent() {
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
   const [feedbackContext, setFeedbackContext] = useState<{ articleSection?: string } | null>(null)
   const [sectionFeedbacks, setSectionFeedbacks] = useState<Record<number, string>>({})
-  
+  const [isInterviewInfoCollapsed, setIsInterviewInfoCollapsed] = useState(true)
+
   // 編集可能な記事生成パラメータ
   const [targetAudience, setTargetAudience] = useState<string>('')
   const [mediaType, setMediaType] = useState<string>('')
   const [interviewPurpose, setInterviewPurpose] = useState<string>('')
-  
+  const [supplementaryInfo, setSupplementaryInfo] = useState<string>('')
+  const [objective, setObjective] = useState<string>('')
+
   // バリエーション管理
-  const [variations, setVariations] = useState<Array<{ id: string, name: string, targetAudience: string, mediaType: string, interviewPurpose: string }>>([])
+  const [variations, setVariations] = useState<Array<{ id: string, name: string, targetAudience: string, mediaType: string, interviewPurpose: string, supplementaryInfo?: string }>>([])
   const [currentVariationId, setCurrentVariationId] = useState<string | null>(null)
   const [showVariationDialog, setShowVariationDialog] = useState(false)
   const [variationName, setVariationName] = useState<string>('')
@@ -56,22 +62,45 @@ function NewArticlePageContent() {
     try {
       setLoading(true)
       setError(null)
-      
+
       const firestoreDb = getFirebaseDb()
       const docRef = doc(firestoreDb, 'interviews', interviewId!)
       const docSnap = await getDoc(docRef)
-      
+
       if (docSnap.exists()) {
         const data = docSnap.data()
+
+        // メッセージサブコレクションをフェッチ
+        const messagesRef = collection(firestoreDb, 'interviews', interviewId!, 'messages')
+        const q = query(messagesRef, orderBy('timestamp', 'asc'))
+        const messagesSnap = await getDocs(q)
+        const subMessages = messagesSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+
+        // 古い形式のメッセージがあるか確認
+        const hasOldMessages = Array.isArray(data.messages) && data.messages.length > 0
+        const currentMessages = subMessages.length > 0 ? subMessages : (hasOldMessages ? data.messages : [])
+
         setInterview({
           id: docSnap.id,
-          ...data
+          ...data,
+          messages: currentMessages,
+          hasOldMessages: hasOldMessages && subMessages.length === 0 // 移行が必要な状態
         })
-        
+
         // 初期値を設定
         setTargetAudience(data.targetAudience || '')
         setMediaType(data.mediaType || '')
         setInterviewPurpose(data.interviewPurpose || '')
+        setSupplementaryInfo(data.supplementaryInfo || '')
+        setObjective(data.objective || '')
+
+        // Ensure collapsed if fields are present
+        if (!data.targetAudience || !data.mediaType || !data.interviewPurpose || !data.objective) {
+          setIsInterviewInfoCollapsed(false)
+        }
       } else {
         setError('インタビューが見つかりません')
       }
@@ -80,6 +109,25 @@ function NewArticlePageContent() {
       setError('インタビューの読み込みに失敗しました')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleMigrateMessages = async () => {
+    if (!interviewId) return
+
+    try {
+      setMigrating(true)
+      setError(null)
+      const result = await migrateInterviewMessages(interviewId)
+      if (result.success) {
+        alert(`✅ ${result.migratedCount} 件のメッセージを移行しました。`)
+        await loadInterview() // データを再読み込み
+      }
+    } catch (error) {
+      console.error('Error migrating messages:', error)
+      setError('メッセージの移行に失敗しました')
+    } finally {
+      setMigrating(false)
     }
   }
 
@@ -101,32 +149,45 @@ function NewArticlePageContent() {
         return
       }
 
+      // 認証トークンの取得
+      const idToken = await getFirebaseAuth().currentUser?.getIdToken()
+      if (!idToken) {
+        throw new Error('認証トークンの取得に失敗しました。再ログインをお試しください。')
+      }
+
       const response = await fetch('/api/article/generate-draft', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
         body: JSON.stringify({
           interviewId: interview.id,
           conversationHistory: conversationHistory,
           targetAudience: targetAudience || interview.targetAudience || '',
           mediaType: mediaType || interview.mediaType || '',
           interviewPurpose: interviewPurpose || interview.interviewPurpose || '',
-          objective: interview.objective || '',
+          supplementaryInfo: supplementaryInfo || interview.supplementaryInfo || '',
+          objective: objective || interview.objective || '',
           intervieweeName: interview.intervieweeName || '',
           intervieweeCompany: interview.intervieweeCompany || '',
-          knowledgeBaseIds: interview.knowledgeBaseIds || []
+          category: interview.category || '',
+          knowledgeBaseIds: interview.knowledgeBaseIds || [],
+          companyId: user?.companyId
         }),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
         const errorMessage = errorData.error || '敲きの生成に失敗しました'
+        const debugInfo = errorData.adminDebug ? `\n[Debug Info]: ${JSON.stringify(errorData.adminDebug, null, 2)}` : ''
         const details = errorData.details ? `\n詳細: ${errorData.details}` : ''
         const preview = errorData.generatedTextPreview ? `\n\n生成されたテキストのプレビュー:\n${errorData.generatedTextPreview}` : ''
-        throw new Error(`${errorMessage}${details}${preview}`)
+        throw new Error(`${errorMessage}${debugInfo}${details}${preview}`)
       }
 
       const data = await response.json()
-      setDraft(data.draft)
+      setDraft(data)
       setStep('wordCount')
     } catch (error) {
       console.error('Error generating draft:', error)
@@ -166,7 +227,9 @@ function NewArticlePageContent() {
           targetAudience: targetAudience || interview?.targetAudience || '',
           mediaType: mediaType || interview?.mediaType || '',
           interviewPurpose: interviewPurpose || interview?.interviewPurpose || '',
-          knowledgeBaseIds: interview?.knowledgeBaseIds || []
+          supplementaryInfo: supplementaryInfo || interview?.supplementaryInfo || '',
+          knowledgeBaseIds: interview?.knowledgeBaseIds || [],
+          companyId: user?.companyId
         }),
       })
 
@@ -219,32 +282,45 @@ function NewArticlePageContent() {
         return
       }
 
+      // 認証トークンの取得
+      const idToken = await getFirebaseAuth().currentUser?.getIdToken()
+      if (!idToken) {
+        throw new Error('認証トークンの取得に失敗しました。再ログインをお試しください。')
+      }
+
       // フィードバックを反映した敲きを再生成
       const response = await fetch('/api/article/generate-draft', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
         body: JSON.stringify({
           interviewId: interview?.id,
           conversationHistory: conversationHistory,
           targetAudience: targetAudience || interview?.targetAudience || '',
           mediaType: mediaType || interview?.mediaType || '',
           interviewPurpose: interviewPurpose || interview?.interviewPurpose || '',
+          supplementaryInfo: supplementaryInfo || interview?.supplementaryInfo || '',
           objective: `${interview?.objective || ''}\n\n【フィードバック】\n${feedbackText}`,
           intervieweeName: interview?.intervieweeName || '',
           intervieweeCompany: interview?.intervieweeCompany || '',
-          knowledgeBaseIds: interview?.knowledgeBaseIds || []
+          category: interview?.category || '',
+          knowledgeBaseIds: interview?.knowledgeBaseIds || [],
+          companyId: user?.companyId
         }),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
         const errorMessage = errorData.error || '敲きの再生成に失敗しました'
+        const debugInfo = errorData.adminDebug ? `\n[Debug Info]: ${JSON.stringify(errorData.adminDebug, null, 2)}` : ''
         const details = errorData.details ? `\n詳細: ${errorData.details}` : ''
-        throw new Error(`${errorMessage}${details}`)
+        throw new Error(`${errorMessage}${debugInfo}${details}`)
       }
 
       const data = await response.json()
-      setDraft(data.draft)
+      setDraft(data)
       setSectionFeedbacks({}) // フィードバックをクリア
     } catch (error) {
       console.error('Error applying feedback:', error)
@@ -261,9 +337,14 @@ function NewArticlePageContent() {
       setSaving(true)
       setError(null)
 
+      const slug = generateSlug(article.title)
+      const uniqueSlug = ensureUniqueSlug(slug, interview.id)
+
       const articleData = {
         companyId: user.companyId,
+        ownerUserId: user.uid,
         interviewId: interview.id,
+        slug: uniqueSlug,
         draftArticle: {
           title: article.title,
           lead: article.lead,
@@ -272,8 +353,8 @@ function NewArticlePageContent() {
         status: 'draft' as const
       }
 
-      const articleId = await createArticle(articleData)
-      
+      const articleId = await createArticle(articleData as any)
+
       alert('✅ 記事を保存しました！')
       router.push(`/dashboard/articles/${articleId}/edit`)
     } catch (error) {
@@ -341,116 +422,182 @@ function NewArticlePageContent() {
           </div>
         )}
 
+        {/* Migration Alert */}
+        {interview?.hasOldMessages && (
+          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between">
+            <div>
+              <p className="text-amber-800 dark:text-amber-300 font-semibold">
+                古い形式のメッセージ履歴が見つかりました。
+              </p>
+              <p className="text-amber-700 dark:text-amber-400 text-sm mt-1">
+                最新の記事生成ロジックを使用するには、データを新しい形式に移行する必要があります。
+              </p>
+            </div>
+            <Button
+              onClick={handleMigrateMessages}
+              disabled={migrating}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {migrating ? '移行中...' : '今すぐ移行する'}
+            </Button>
+          </div>
+        )}
+
         {/* Interview Info */}
         {interview && (
           <Card className="mb-6">
-            <CardHeader>
+            <CardHeader
+              className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              onClick={() => setIsInterviewInfoCollapsed(!isInterviewInfoCollapsed)}
+            >
               <div className="flex items-center justify-between">
-                <CardTitle>取材情報</CardTitle>
-                <Button
-                  onClick={() => setShowVariationDialog(true)}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                >
-                  <SparklesIcon className="w-3 h-3 mr-1" />
-                  バリエーション管理
-                </Button>
+                <div className="flex items-center gap-2">
+                  <CardTitle>取材情報</CardTitle>
+                  <p className="text-xs text-gray-500 font-normal">
+                    {isInterviewInfoCollapsed ? '（クリックで表示・編集）' : '（クリックで閉じる）'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowVariationDialog(true);
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    <SparklesIcon className="w-3 h-3 mr-1" />
+                    バリエーション管理
+                  </Button>
+                  {isInterviewInfoCollapsed ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronUpIcon className="w-4 h-4" />}
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <span className="font-semibold">取材先: </span>
-                <span>{interview.intervieweeName} ({interview.intervieweeCompany})</span>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  ターゲット読者:
-                </label>
-                <Textarea
-                  value={targetAudience}
-                  onChange={(e) => setTargetAudience(e.target.value)}
-                  placeholder="例：起業を目指す20-30代"
-                  rows={2}
-                  className="text-sm"
-                />
-                {targetAudience !== interview.targetAudience && (
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    ※ 元の設定: {interview.targetAudience || '未指定'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  掲載メディア:
-                </label>
-                <Textarea
-                  value={mediaType}
-                  onChange={(e) => setMediaType(e.target.value)}
-                  placeholder="例：創業支援施設が運営しているウェブメディア"
-                  rows={2}
-                  className="text-sm"
-                />
-                {mediaType !== interview.mediaType && (
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    ※ 元の設定: {interview.mediaType || '未指定'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  取材の目的:
-                </label>
-                <Textarea
-                  value={interviewPurpose}
-                  onChange={(e) => setInterviewPurpose(e.target.value)}
-                  placeholder="例：起業家を増やしたい、何かアイデアにつながれば"
-                  rows={2}
-                  className="text-sm"
-                />
-                {interviewPurpose !== interview.interviewPurpose && (
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    ※ 元の設定: {interview.interviewPurpose || '未指定'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <span className="font-semibold">会話履歴: </span>
-                <span>
-                  {((interview.messages?.length || 0) + (interview.rehearsalMessages?.length || 0))} 件
-                </span>
-              </div>
-              
-              {/* バリエーション選択 */}
-              {variations.length > 0 && (
+            {!isInterviewInfoCollapsed && (
+              <CardContent className="space-y-4 pt-0">
+                <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                  <span className="font-semibold text-sm">取材先: </span>
+                  <span className="text-sm">{interview.intervieweeName} ({interview.intervieweeCompany})</span>
+                </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">保存されたバリエーション:</p>
-                  <div className="space-y-2">
-                    {variations.map((variation) => (
-                      <button
-                        key={variation.id}
-                        onClick={() => {
-                          setTargetAudience(variation.targetAudience)
-                          setMediaType(variation.mediaType)
-                          setInterviewPurpose(variation.interviewPurpose)
-                          setCurrentVariationId(variation.id)
-                        }}
-                        className={`w-full text-left p-2 rounded border text-xs ${
-                          currentVariationId === variation.id
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    ターゲット読者:
+                  </label>
+                  <Textarea
+                    value={targetAudience}
+                    onChange={(e) => setTargetAudience(e.target.value)}
+                    placeholder="例：起業を目指す20-30代"
+                    rows={2}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    掲載メディア:
+                  </label>
+                  <Textarea
+                    value={mediaType}
+                    onChange={(e) => setMediaType(e.target.value)}
+                    placeholder="例：創業支援施設が運営しているウェブメディア"
+                    rows={2}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    取材の目的:
+                  </label>
+                  <Textarea
+                    value={interviewPurpose}
+                    onChange={(e) => setInterviewPurpose(e.target.value)}
+                    placeholder="例：起業家を増やしたい、何かアイデアにつながれば"
+                    rows={2}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    {['イベント告知', 'プレスリリース', '新サービス紹介', 'ビジネスニュース', 'イベントレポート'].some(cat => interview.category?.includes(cat))
+                      ? '告知詳細情報（日時・場所・URL・価格など）:'
+                      : '補足情報 (開催日時や住所など):'}
+                  </label>
+                  <Textarea
+                    value={supplementaryInfo}
+                    onChange={(e) => setSupplementaryInfo(e.target.value)}
+                    placeholder="開催日時や住所など詳細情報を記載"
+                    rows={2}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    具体的に聞きたいこと:
+                  </label>
+                  <Textarea
+                    value={objective}
+                    onChange={(e) => setObjective(e.target.value)}
+                    placeholder="インタビューで具体的に聞きたいことを記載"
+                    rows={3}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <span className="font-semibold text-sm">会話履歴: </span>
+                  <span className="text-sm">
+                    {((interview.messages?.length || 0) + (interview.rehearsalMessages?.length || 0))} 件
+                  </span>
+                </div>
+
+                {/* バリエーション選択 */}
+                {variations.length > 0 && (
+                  <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">保存されたバリエーション:</p>
+                    <div className="space-y-2">
+                      {variations.map((variation) => (
+                        <button
+                          key={variation.id}
+                          onClick={() => {
+                            setTargetAudience(variation.targetAudience)
+                            setMediaType(variation.mediaType)
+                            setInterviewPurpose(variation.interviewPurpose)
+                            setSupplementaryInfo(variation.supplementaryInfo || '')
+                            setCurrentVariationId(variation.id)
+                          }}
+                          className={`w-full text-left p-2 rounded border text-xs ${currentVariationId === variation.id
                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                             : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
-                        }`}
-                      >
-                        <div className="font-semibold">{variation.name}</div>
-                        <div className="text-gray-600 dark:text-gray-400 mt-1">
-                          {variation.targetAudience.substring(0, 30)}...
-                        </div>
-                      </button>
-                    ))}
+                            }`}
+                        >
+                          <div className="font-semibold">{variation.name}</div>
+                          <div className="text-gray-600 dark:text-gray-400 mt-1">
+                            {variation.targetAudience.substring(0, 30)}...
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
+                )}
+              </CardContent>
+            )}
+            {isInterviewInfoCollapsed && (
+              <CardContent className="pt-0 pb-4">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
+                    ターゲット: {targetAudience ? (targetAudience.length > 15 ? targetAudience.substring(0, 15) + '...' : targetAudience) : '未設定'}
+                  </Badge>
+                  <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
+                    媒体: {mediaType ? (mediaType.length > 15 ? mediaType.substring(0, 15) + '...' : mediaType) : '未設定'}
+                  </Badge>
+                  <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
+                    目的: {interviewPurpose ? (interviewPurpose.length > 15 ? interviewPurpose.substring(0, 15) + '...' : interviewPurpose) : '未設定'}
+                  </Badge>
+                  <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
+                    具体的質問: {objective ? (objective.length > 15 ? objective.substring(0, 15) + '...' : objective) : '未設定'}
+                  </Badge>
                 </div>
-              )}
-            </CardContent>
+              </CardContent>
+            )}
           </Card>
         )}
 
@@ -570,7 +717,7 @@ function NewArticlePageContent() {
                       500文字以上、10,000文字以下で指定してください
                     </p>
                   </div>
-                  
+
                   {/* Quick Word Count Buttons */}
                   <div className="flex gap-2 flex-wrap">
                     <Button
@@ -850,113 +997,115 @@ function NewArticlePageContent() {
       </div>
 
       {/* バリエーションダイアログ */}
-      {showVariationDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md mx-4">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>バリエーションを保存</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setShowVariationDialog(false)
-                    setVariationName('')
-                  }}
-                >
-                  <XIcon className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  バリエーション名
-                </label>
-                <input
-                  type="text"
-                  value={variationName}
-                  onChange={(e) => setVariationName(e.target.value)}
-                  placeholder="例：起業家向け記事、一般読者向け記事など"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                />
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                <p><strong>ターゲット読者:</strong> {targetAudience || '未設定'}</p>
-                <p><strong>掲載メディア:</strong> {mediaType || '未設定'}</p>
-                <p><strong>取材の目的:</strong> {interviewPurpose || '未設定'}</p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    if (!variationName.trim()) {
-                      alert('バリエーション名を入力してください')
-                      return
-                    }
-                    const newVariation = {
-                      id: `var-${Date.now()}`,
-                      name: variationName.trim(),
-                      targetAudience,
-                      mediaType,
-                      interviewPurpose
-                    }
-                    setVariations([...variations, newVariation])
-                    setCurrentVariationId(newVariation.id)
-                    setShowVariationDialog(false)
-                    setVariationName('')
-                  }}
-                  className="flex-1"
-                >
-                  <CheckIcon className="w-4 h-4 mr-2" />
-                  保存
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowVariationDialog(false)
-                    setVariationName('')
-                  }}
-                >
-                  キャンセル
-                </Button>
-              </div>
-              
-              {/* 既存のバリエーション一覧 */}
-              {variations.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">保存済みバリエーション:</p>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {variations.map((variation) => (
-                      <div
-                        key={variation.id}
-                        className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded"
-                      >
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{variation.name}</p>
-                          <p className="text-xs text-gray-500">{variation.targetAudience.substring(0, 40)}...</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setVariations(variations.filter(v => v.id !== variation.id))
-                            if (currentVariationId === variation.id) {
-                              setCurrentVariationId(null)
-                            }
-                          }}
-                        >
-                          <XIcon className="w-4 h-4 text-red-600" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+      {
+        showVariationDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <Card className="w-full max-w-md mx-4">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>バリエーションを保存</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowVariationDialog(false)
+                      setVariationName('')
+                    }}
+                  >
+                    <XIcon className="w-4 h-4" />
+                  </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    バリエーション名
+                  </label>
+                  <input
+                    type="text"
+                    value={variationName}
+                    onChange={(e) => setVariationName(e.target.value)}
+                    placeholder="例：起業家向け記事、一般読者向け記事など"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                  <p><strong>ターゲット読者:</strong> {targetAudience || '未設定'}</p>
+                  <p><strong>掲載メディア:</strong> {mediaType || '未設定'}</p>
+                  <p><strong>取材の目的:</strong> {interviewPurpose || '未設定'}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      if (!variationName.trim()) {
+                        alert('バリエーション名を入力してください')
+                        return
+                      }
+                      const newVariation = {
+                        id: `var-${Date.now()}`,
+                        name: variationName.trim(),
+                        targetAudience,
+                        mediaType,
+                        interviewPurpose
+                      }
+                      setVariations([...variations, newVariation])
+                      setCurrentVariationId(newVariation.id)
+                      setShowVariationDialog(false)
+                      setVariationName('')
+                    }}
+                    className="flex-1"
+                  >
+                    <CheckIcon className="w-4 h-4 mr-2" />
+                    保存
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowVariationDialog(false)
+                      setVariationName('')
+                    }}
+                  >
+                    キャンセル
+                  </Button>
+                </div>
+
+                {/* 既存のバリエーション一覧 */}
+                {variations.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">保存済みバリエーション:</p>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {variations.map((variation) => (
+                        <div
+                          key={variation.id}
+                          className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                        >
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{variation.name}</p>
+                            <p className="text-xs text-gray-500">{variation.targetAudience.substring(0, 40)}...</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setVariations(variations.filter(v => v.id !== variation.id))
+                              if (currentVariationId === variation.id) {
+                                setCurrentVariationId(null)
+                              }
+                            }}
+                          >
+                            <XIcon className="w-4 h-4 text-red-600" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
+      }
+    </div >
   )
 }
 

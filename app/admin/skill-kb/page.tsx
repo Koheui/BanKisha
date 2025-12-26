@@ -226,6 +226,43 @@ export default function SkillKBPage() {
     }
   }
 
+  const handleUsageChange = async (
+    kbId: string,
+    scenario: 'dialogue' | 'article' | 'summary',
+    checked: boolean
+  ) => {
+    try {
+      const firestoreDb = getFirebaseDb()
+      const kbRef = doc(firestoreDb, 'knowledgeBases', kbId)
+
+      const updateData: any = {}
+      if (scenario === 'dialogue') {
+        updateData.useForDialogue = checked
+      } else if (scenario === 'article') {
+        updateData.useForArticle = checked
+      } else if (scenario === 'summary') {
+        updateData.useForSummary = checked
+      }
+
+      await updateDoc(kbRef, {
+        ...updateData,
+        updatedAt: serverTimestamp()
+      })
+
+      // ローカル状態を更新
+      setKnowledgeBases(prev =>
+        prev.map(kb =>
+          kb.id === kbId
+            ? { ...kb, ...updateData }
+            : kb
+        )
+      )
+    } catch (error) {
+      console.error('Error updating usage scenario:', error)
+      alert('❌ 更新に失敗しました')
+    }
+  }
+
   const handleFeedbackStart = (kb: KnowledgeBase, contentType: 'summary' | 'usageGuide') => {
     setFeedbackKbId(kb.id)
     setFeedbackContentType(contentType)
@@ -526,6 +563,41 @@ export default function SkillKBPage() {
                           <>
                             {kb.pageCount && <p>ページ数: {kb.pageCount}</p>}
                             {kb.chunkCount && <p>チャンク数: {kb.chunkCount}</p>}
+                            {/* 活用方法のチェックボックス */}
+                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                                活用方法
+                              </label>
+                              <div className="flex flex-wrap gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={kb.useForDialogue ?? true}
+                                    onChange={(e) => handleUsageChange(kb.id, 'dialogue', e.target.checked)}
+                                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500 focus:ring-2"
+                                  />
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">対話術</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={kb.useForArticle ?? false}
+                                    onChange={(e) => handleUsageChange(kb.id, 'article', e.target.checked)}
+                                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500 focus:ring-2"
+                                  />
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">記事作成</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={kb.useForSummary ?? false}
+                                    onChange={(e) => handleUsageChange(kb.id, 'summary', e.target.checked)}
+                                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500 focus:ring-2"
+                                  />
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">サマリー作成</span>
+                                </label>
+                              </div>
+                            </div>
                             {kb.summary && (
                               <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
                                 <p className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">

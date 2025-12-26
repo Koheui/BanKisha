@@ -2,21 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as admin from 'firebase-admin'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-// Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  })
-}
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+import { initializeFirebaseAdmin } from '@/src/lib/firebase-admin'
 
 export async function POST(request: NextRequest) {
   try {
+    await initializeFirebaseAdmin()
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
     console.log('🔄 [Regenerate API] Starting...')
     const { knowledgeBaseId, contentType, feedback, feedbackMode, isEditOnly } = await request.json()
     console.log('📥 Request params:', { knowledgeBaseId, contentType, feedbackMode, feedbackLength: feedback?.length })
@@ -63,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     // Initialize Gemini model
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       generationConfig: {
         temperature: 0.7,
       },
@@ -78,7 +69,7 @@ export async function POST(request: NextRequest) {
     if (contentType === 'summary') {
       currentContent = currentSummary
       historyField = 'summaryHistory'
-      
+
       let instruction = ''
       if (feedbackMode === 'add') {
         instruction = `【重要】既存の概要の内容を一切削除せず、そのまま全て残してください。その上で、新しい観点を追加してください。
@@ -199,13 +190,13 @@ ${isEditOnly ? '⚠️ このスキルは編集時のみ使用するため、活
         usageGuideHistory: admin.firestore.FieldValue.arrayUnion(newVersion),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }
-      
+
       // 編集時のみ使用フラグを更新
       if (isEditOnly !== undefined) {
         updateData.isEditOnly = isEditOnly
         console.log(`📝 isEditOnly set to: ${isEditOnly}`)
       }
-      
+
       await kbRef.update(updateData)
       console.log('✅ Firestore updated')
     }

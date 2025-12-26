@@ -7,7 +7,7 @@ let initialized = false
 
 // Method 1: Try service account key file
 try {
-  const serviceAccountPath = path.join(__dirname, '../service-account-key.json')
+  const serviceAccountPath = path.join(__dirname, '../Keys/bankisha-654d0-b46f8ce3b8d9.json')
   if (fs.existsSync(serviceAccountPath)) {
     const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'))
     admin.initializeApp({

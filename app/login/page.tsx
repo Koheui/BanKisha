@@ -1,27 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { AlertCircleIcon, EyeIcon, EyeOffIcon, LogInIcon, User, MailIcon } from 'lucide-react'
+import { AlertCircleIcon, EyeIcon, EyeOffIcon, LogInIcon, MailIcon } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  
+
   const { signIn } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectPath = searchParams.get('redirect')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!email || !password) {
       setError('メールアドレスとパスワードを入力してください')
       return
@@ -34,10 +36,11 @@ export default function LoginPage() {
       await signIn(email, password)
       // Wait a bit for auth state to update
       await new Promise(resolve => setTimeout(resolve, 500))
-      router.push('/dashboard')
+      // リダイレクトパスがある場合はそこに遷移、なければダッシュボード
+      router.push(redirectPath || '/dashboard')
     } catch (err: any) {
       console.error('Login error:', err)
-      
+
       let errorMessage = 'ログインに失敗しました'
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
         errorMessage = 'メールアドレスまたはパスワードが正しくありません'
@@ -48,7 +51,7 @@ export default function LoginPage() {
       } else if (err.message) {
         errorMessage = err.message
       }
-      
+
       setError(errorMessage)
     } finally {
       setLoading(false)
@@ -81,7 +84,7 @@ export default function LoginPage() {
               認証情報を入力してください
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
@@ -90,7 +93,7 @@ export default function LoginPage() {
                   <span className="text-sm text-red-600 dark:text-red-400">{error}</span>
                 </div>
               )}
-              
+
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   メールアドレス
@@ -105,7 +108,7 @@ export default function LoginPage() {
                     required
                     style={{ backgroundColor: 'white', color: 'black' }}
                     className="w-full pl-10 pr-3 py-2 border-2 border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="office@futurestudio.co.jp"
+                    placeholder="メールアドレスを入力"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading}
@@ -171,24 +174,24 @@ export default function LoginPage() {
         {/* Footer Links */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-4">
-            <Link 
-              href="/signup" 
+            <Link
+              href={redirectPath ? `/signup?redirect=${encodeURIComponent(redirectPath)}` : '/signup'}
               className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
             >
               新規登録はこちら
             </Link>
             <span className="text-gray-400">|</span>
-            <Link 
-              href="/forgot-password" 
+            <Link
+              href="/forgot-password"
               className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
             >
               パスワードを忘れた場合
             </Link>
           </div>
-          
+
           <div className="text-xs text-gray-500 dark:text-gray-400">
             <p>ログインすることで、以下の権限をお持ちのアカウントでアクセスできます：</p>
-            <div className="flex justify-center gap-2 mt-2">
+            <div className="justify-center gap-2 mt-2 hidden sm:flex">
               <Badge variant="outline">企業アカウント</Badge>
               <Badge variant="secondary">管理者アカウント</Badge>
             </div>
@@ -196,5 +199,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   )
 }

@@ -4,18 +4,16 @@ import * as admin from 'firebase-admin'
 import { initializeFirebaseAdmin } from '@/src/lib/firebase-admin'
 
 // Initialize Firebase Admin SDK
-initializeFirebaseAdmin()
-
-const adminDb = admin.firestore()
-
 export async function POST(request: NextRequest) {
   try {
-    const { 
-      conversationHistory, 
-      remainingQuestions, 
-      interviewPurpose, 
-      targetAudience, 
-      mediaType, 
+    await initializeFirebaseAdmin()
+    const adminDb = admin.firestore()
+    const {
+      conversationHistory,
+      remainingQuestions,
+      interviewPurpose,
+      targetAudience,
+      mediaType,
       objective,
       knowledgeBaseIds,
       intervieweeName,
@@ -26,7 +24,9 @@ export async function POST(request: NextRequest) {
       confirmNameAtInterview,
       confirmCompanyAtInterview,
       confirmTitleAtInterview,
-      confirmDepartmentAtInterview
+      confirmDepartmentAtInterview,
+      introductionMessage,
+      interviewerName
     } = await request.json()
 
     if (!conversationHistory || !Array.isArray(conversationHistory)) {
@@ -46,56 +46,87 @@ export async function POST(request: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(geminiApiKey)
 
+    // Fetch the master direction prompt
+    let directionPromptContext = ''
+    try {
+      const settingsRef = adminDb.collection('systemSettings').doc('appDirection')
+      const settingsDoc = await settingsRef.get()
+      if (settingsDoc.exists) {
+        directionPromptContext = settingsDoc.data()?.directionPrompt || ''
+      }
+    } catch (error) {
+      console.warn('⚠️ Error loading app direction prompt:', error)
+      // Continue without the master prompt if it fails
+    }
+
     // スキルナレッジベースから対話手法の情報を取得
+    // 重要: スキルナレッジベースはサーバー側で自動取得（クライアント側から送信されなくても取得）
     let skillKnowledgeContext = ''
-    if (knowledgeBaseIds && knowledgeBaseIds.length > 0 && adminDb) {
+
+    // 1. スキルナレッジベースを自動取得（サーバー側のみ）
+    if (adminDb) {
       try {
-        const kbDocs = await Promise.all(
-          knowledgeBaseIds.map(async (kbId: string) => {
-            const kbDoc = await adminDb.collection('knowledgeBases').doc(kbId).get()
-            if (kbDoc.exists) {
-              const kbData = kbDoc.data()
-              const isSkillKB = kbData?.type === 'skill' || 
-                               kbData?.fileName?.toLowerCase().includes('skill') || 
-                               kbData?.fileName?.toLowerCase().includes('スキル')
-              
-              // 編集時のみ使用のスキルは除外（インタビュー質問生成では使用しない）
-              if (!isSkillKB || kbData?.isEditOnly) return null
-              
-              let chunksText = ''
-              try {
-                const chunksSnapshot = await adminDb
-                  .collection('knowledgeBases')
-                  .doc(kbId)
-                  .collection('chunks')
-                  .limit(50)
-                  .get()
-                
-                if (!chunksSnapshot.empty) {
-                  chunksText = chunksSnapshot.docs
-                    .map(doc => doc.data().text || '')
-                    .filter(text => text.length > 0)
-                    .join('\n\n')
-                }
-              } catch (chunksError) {
-                console.warn('⚠️ Error loading chunks:', chunksError)
-              }
-              
-              return {
-                summary: kbData?.summary || '',
-                usageGuide: kbData?.usageGuide || '',
-                fileName: kbData?.fileName || '',
-                chunks: chunksText,
-              }
+        // スキルナレッジベースをクエリで取得（useForDialogue === true または未設定のもの）
+        const skillKBQuery = adminDb
+          .collection('knowledgeBases')
+          .where('type', '==', 'skill')
+          .limit(10) // 最大10個まで取得
+
+        const skillKBSnapshot = await skillKBQuery.get()
+
+        const skillKBDocs = await Promise.all(
+          skillKBSnapshot.docs.map(async (doc) => {
+            const kbData = doc.data()
+
+            // 削除済みはスキップ
+            if (kbData?.deleted === true) {
+              return null
             }
-            return null
+
+            // 対話術で使用しない場合はスキップ
+            if (kbData?.useForDialogue === false) {
+              return null
+            }
+
+            // 編集時のみ使用のスキルは除外
+            if (kbData?.isEditOnly) {
+              return null
+            }
+
+            // スキルナレッジベースのchunksを取得
+            let chunksText = ''
+            try {
+              const chunksSnapshot = await adminDb
+                .collection('knowledgeBases')
+                .doc(doc.id)
+                .collection('chunks')
+                .limit(50)
+                .get()
+
+              if (!chunksSnapshot.empty) {
+                chunksText = chunksSnapshot.docs
+                  .map(chunkDoc => chunkDoc.data().text || '')
+                  .filter(text => text.length > 0)
+                  .join('\n\n')
+              }
+            } catch (chunksError) {
+              // 機密保護のため、エラーの詳細は出力しない
+              console.warn('⚠️ Error loading chunks: [details masked]')
+            }
+
+            return {
+              summary: kbData?.summary || '',
+              usageGuide: kbData?.usageGuide || '',
+              fileName: kbData?.fileName || '',
+              chunks: chunksText,
+            }
           })
         )
-        
-        const skillKBs = kbDocs.filter(kb => kb !== null)
-        
-        if (skillKBs.length > 0) {
-          skillKnowledgeContext = skillKBs.map(kb => {
+
+        const validSkillKBs = skillKBDocs.filter(kb => kb !== null)
+
+        if (validSkillKBs.length > 0) {
+          skillKnowledgeContext = validSkillKBs.map(kb => {
             let context = `【${kb?.fileName}】\n概要: ${kb?.summary}\n活用方法: ${kb?.usageGuide}`
             if (kb?.chunks && kb.chunks.length > 0) {
               context += `\n\n【対話設計・質問設計のベストプラクティス】\n${kb.chunks.substring(0, 10000)}`
@@ -103,16 +134,17 @@ export async function POST(request: NextRequest) {
             return context
           }).join('\n\n')
         }
-      } catch (kbError) {
-        console.warn('⚠️ Error loading knowledge bases:', kbError)
+      } catch (skillKBError) {
+        // 機密保護のため、エラーの詳細は出力しない
+        console.warn('⚠️ Error loading skill knowledge bases: [details masked]')
       }
     }
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       generationConfig: {
-        temperature: 0.8, // より創造的な対話のため少し高め
-        maxOutputTokens: 500, // 完全な質問文を生成するために増加
+        temperature: 0.7, // 少し抑えて一貫性を保つ
+        maxOutputTokens: 500,
       },
     })
 
@@ -135,22 +167,22 @@ export async function POST(request: NextRequest) {
       : 'なし'
 
     // 会話履歴が空の場合（最初の質問）で、確認が必要な場合は確認する質問を生成
-    const isFirstQuestion = conversationHistory.length === 0 || 
+    const isFirstQuestion = conversationHistory.length === 0 ||
       (conversationHistory.length === 1 && conversationHistory[0].role === 'interviewer')
-    
+
     let confirmationContext = ''
     if (isFirstQuestion) {
       // 確認が必要な項目を収集
       const needsConfirmation: string[] = []
       const confirmedParts: string[] = []
-      
+
       // 名前の確認
       if (confirmNameAtInterview) {
         needsConfirmation.push('お名前')
       } else if (intervieweeName) {
         confirmedParts.push(intervieweeName)
       }
-      
+
       // 会社名の確認（企業・団体の場合のみ）
       if (intervieweeType === 'company') {
         if (confirmCompanyAtInterview) {
@@ -158,14 +190,14 @@ export async function POST(request: NextRequest) {
         } else if (intervieweeCompany) {
           confirmedParts.push(intervieweeCompany)
         }
-        
+
         // 部署名の確認
         if (confirmDepartmentAtInterview) {
           needsConfirmation.push('部署名')
         } else if (intervieweeDepartment) {
           confirmedParts.push(intervieweeDepartment)
         }
-        
+
         // 役職名の確認
         if (confirmTitleAtInterview) {
           needsConfirmation.push('役職名')
@@ -173,11 +205,23 @@ export async function POST(request: NextRequest) {
           confirmedParts.push(intervieweeTitle)
         }
       }
-      
+
+      // 最初の質問の構成を指定（挨拶、自己紹介、名前確認を含める）
+      const actualInterviewerName = interviewerName || 'インタビュアー'
+      let firstQuestionParts: string[] = []
+      firstQuestionParts.push('1. 挨拶：「本日はお時間いただき、ありがとうございます。」')
+      firstQuestionParts.push(`2. 自己紹介：インタビュアーの名前を名乗る（実際の名前「${actualInterviewerName}」を使用。「インタビュアー」という表現は使わない）`)
+      firstQuestionParts.push(`   - 例：「私、${actualInterviewerName}と申します。」`)
+
       // 確認が必要な項目がある場合
       if (needsConfirmation.length > 0) {
         const needsConfirmationText = needsConfirmation.join('・')
-        confirmationContext = `【重要】最初の質問として、先方の情報を確認してください。\n\n「念の為、確認させていただきたいのですが、${needsConfirmationText}を教えていただけますか？もし補足がありましたら、お願いします。」\n\nこの確認の後、自然にインタビューを進めてください。`
+        firstQuestionParts.push(`3. 相手方の名前確認：「念の為、確認させていただきたいのですが、${needsConfirmationText}を教えていただけますか？もし補足がありましたら、お願いします。」`)
+        confirmationContext = `【重要】最初の質問として、以下の構成で生成してください：\n${firstQuestionParts.join('\n')}\n\n4. 本題への導入：「それでは、早速ですが...」という形で本題の質問へ自然に繋げる\n\n**注意**：
+- 導入メッセージで既に説明した内容（取材の目的、ターゲット読者、掲載メディアの説明）は繰り返さないでください
+- 挨拶、自己紹介、名前確認は必ず含めてください
+- 自己紹介では、必ず実際のインタビュアー名「${actualInterviewerName}」を使用してください。「インタビュアー」という表現は絶対に使わないでください
+- 例：「私、${actualInterviewerName}と申します。」のように、実際の名前を必ず使用してください`
       }
       // 確認が必要な項目がなく、情報が入力されている場合は、その情報を確認
       else if (confirmedParts.length > 0) {
@@ -186,24 +230,54 @@ export async function POST(request: NextRequest) {
           const departmentPart = intervieweeDepartment ? `${intervieweeDepartment}の` : ''
           const titlePart = intervieweeTitle ? `${intervieweeTitle}の` : ''
           const namePart = intervieweeName
-          confirmationContext = `【重要】最初の質問として、以下の形式で確認してください。\n\n「念の為、確認させていただきたいのですが、${companyPart}の${departmentPart}${titlePart}${namePart}さんで間違いございませんか？もし補足がありましたら、お願いします。」\n\nこの確認の後、自然にインタビューを進めてください。`
+          firstQuestionParts.push(`3. 相手方の名前確認：「念の為、確認させていただきたいのですが、${companyPart}の${departmentPart}${titlePart}${namePart}さんで間違いございませんか？もし補足がありましたら、お願いします。」`)
+          confirmationContext = `【重要】最初の質問として、以下の構成で生成してください：\n${firstQuestionParts.join('\n')}\n\n4. 本題への導入：「それでは、早速ですが...」という形で本題の質問へ自然に繋げる\n\n**注意**：
+- 導入メッセージで既に説明した内容（取材の目的、ターゲット読者、掲載メディアの説明）は繰り返さないでください
+- 挨拶、自己紹介、名前確認は必ず含めてください
+- 自己紹介では、必ず実際のインタビュアー名「${actualInterviewerName}」を使用してください。「インタビュアー」という表現は絶対に使わないでください
+- 例：「私、${actualInterviewerName}と申します。」のように、実際の名前を必ず使用してください`
         } else if (intervieweeType === 'individual' && intervieweeName) {
           const titlePart = intervieweeTitle ? `${intervieweeTitle}の` : ''
-          confirmationContext = `【重要】最初の質問として、以下の形式で確認してください。\n\n「念の為、確認させていただきたいのですが、${titlePart}${intervieweeName}さんで間違いございませんか？もし補足がありましたら、お願いします。」\n\nこの確認の後、自然にインタビューを進めてください。`
+          firstQuestionParts.push(`3. 相手方の名前確認：「念の為、確認させていただきたいのですが、${titlePart}${intervieweeName}さんで間違いございませんか？もし補足がありましたら、お願いします。」`)
+          confirmationContext = `【重要】最初の質問として、以下の構成で生成してください：\n${firstQuestionParts.join('\n')}\n\n4. 本題への導入：「それでは、早速ですが...」という形で本題の質問へ自然に繋げる\n\n**注意**：
+- 導入メッセージで既に説明した内容（取材の目的、ターゲット読者、掲載メディアの説明）は繰り返さないでください
+- 挨拶、自己紹介、名前確認は必ず含めてください
+- 自己紹介では、必ず実際のインタビュアー名「${actualInterviewerName}」を使用してください。「インタビュアー」という表現は絶対に使わないでください
+- 例：「私、${actualInterviewerName}と申します。」のように、実際の名前を必ず使用してください`
+        } else {
+          firstQuestionParts.push('3. 相手方の名前確認：「お名前を教えていただけますか？」')
+          confirmationContext = `【重要】最初の質問として、以下の構成で生成してください：\n${firstQuestionParts.join('\n')}\n\n4. 本題への導入：「それでは、早速ですが...」という形で本題の質問へ自然に繋げる\n\n**注意**：
+- 導入メッセージで既に説明した内容（取材の目的、ターゲット読者、掲載メディアの説明）は繰り返さないでください
+- 挨拶、自己紹介、名前確認は必ず含めてください
+- 自己紹介では、必ず実際のインタビュアー名「${actualInterviewerName}」を使用してください。「インタビュアー」という表現は絶対に使わないでください
+- 例：「私、${actualInterviewerName}と申します。」のように、実際の名前を必ず使用してください`
         }
+      } else {
+        firstQuestionParts.push('3. 相手方の名前確認：「お名前を教えていただけますか？」')
+        confirmationContext = `【重要】最初の質問として、以下の構成で生成してください：\n${firstQuestionParts.join('\n')}\n\n4. 本題への導入：「それでは、早速ですが...」という形で本題の質問へ自然に繋げる\n\n**注意**：
+- 導入メッセージで既に説明した内容（取材の目的、ターゲット読者、掲載メディアの説明）は繰り返さないでください
+- 挨拶、自己紹介、名前確認は必ず含めてください
+- 自己紹介では、必ず実際のインタビュアー名「${actualInterviewerName}」を使用してください。「インタビュアー」という表現は絶対に使わないでください
+- 例：「私、${actualInterviewerName}と申します。」のように、実際の名前を必ず使用してください`
       }
     }
 
-    const prompt = `${skillKnowledgeContext ? `【最重要：思考の起点 - 対話設計・質問設計のベストプラクティス（スキルナレッジベース）】\n${skillKnowledgeContext}\n\n**⚠️ 最重要**: 上記のスキルナレッジベースは、対話設計における思考の起点です。**必ず最初にこの内容を参照し、その原則と手法に基づいて次の質問を生成してください。** このスキルナレッジベースに記載されている効果的な対話の作り方、質問のタイミング、相手が話しやすい質問のテクニックを**必ず実践**してください。\n\n` : ''}あなたは経験豊富なプロのインタビュアーです。会話の流れに基づいて、自然で効果的な次の質問を生成してください。
+    const prompt = `${directionPromptContext ? `【最重要の基本原則：アプリの方向性】\n${directionPromptContext}\n\n上記の原則を絶対に遵守してください。\n━━━━━━━━━━━━━━━━━━━━\n\n` : ''}${skillKnowledgeContext ? `【最重要：思考の起点 - 対話設計・質問設計のベストプラクティス（スキルナレッジベース）】\n${skillKnowledgeContext}\n\n**⚠️ 最重要**: 上記のスキルナレッジベースは、対話設計における思考の起点です。**必ず最初にこの内容を参照し、その原則と手法に基づいて次の質問を生成してください。** このスキルナレッジベースに記載されている効果的な対話の作り方、質問のタイミング、相手が話しやすい質問のテクニックを**必ず実践**してください。\n\n` : ''}あなたは経験豊富なプロのインタビュアーです。会話の流れに基づいて、自然で効果的な次の質問を生成してください。
 
 【重要な原則】
-${skillKnowledgeContext ? `0. **最重要：スキルナレッジベースを思考の起点として活用**: 上記のスキルナレッジベースに記載されている対話設計の原則と手法を**必ず最初に参照**し、それに基づいて次の質問を生成してください。スキルナレッジベースの内容を無視したり、軽視したりしないでください。\n` : ''}1. **対話を中心に組み立てる**: 質問リストの順序に拘らず、会話の流れを最優先する
+${skillKnowledgeContext ? `0. **最重要：スキルナレッジベースを思考の起点として活用**: 上記のスキルナレッジベースに記載されている対話設計の原則と手法を**必ず最初に参照**し、それに基づいて次の質問を生成してください。スキルナレッジベースの内容を無視したり、軽視したりしないでください。\n` : ''}${introductionMessage ? `0. **最重要：導入メッセージとの重複を避ける**: 以下の導入メッセージで既に説明した内容（取材の目的、ターゲット読者、掲載メディア、具体的な質問内容の概要など）は、質問で繰り返さないでください。導入メッセージで既に説明した内容を質問で再度説明すると、エラーだと感じられてしまいます。\n\n【導入メッセージ（既に読み上げ済み）】\n${introductionMessage}\n\n**重要**: 上記の導入メッセージで既に説明した内容は、質問では繰り返さないでください。例えば、導入メッセージで「${interviewPurpose}についてお話を伺いたい」と説明している場合、質問で「${interviewPurpose}について教えてください」というような質問は生成しないでください。導入メッセージで既に説明した内容は、質問では直接的に言及せず、自然に本題の質問に進んでください。\n\n**ただし、最初の質問の場合は例外です**：最初の質問では、挨拶、自己紹介（インタビュアーの名前を名乗る）、相手方の名前確認を含めてください。これらは導入メッセージで既に含まれていても、最初の質問でも必要です。\n\n` : ''}1. **対話を中心に組み立てる**: 質問リストの順序に拘らず、会話の流れを最優先する
 2. **自然な流れを重視**: 直前の回答に基づいて、自然に次の質問に繋げる
 3. **深掘りを意識**: 表面的な情報だけでなく、感情や背景、具体例を引き出す
 4. **相手が話しやすい質問**: 相手が答えやすく、会話が続くような質問を選ぶ
 5. **質問リストは参考程度**: 残りの質問リストは参考にしつつ、会話の流れに合わせて調整する
 6. **似た質問を避ける**: 既に十分な回答が得られているトピックについては、似たような質問を避ける
-7. **複数のトピックから情報を集める**: 一問一答ではなく、いろいろな事柄から個別の質問の回答率を少しずつ満たしていく
+7. **多角的に情報を集める**: 一問一答ではなく、いろいろな事柄から個別の質問の回答率を少しずつ満たしていく
+8. **最重要：1つの質問は1つのトピックに絞る**: 1つの発話の中に1つの質問のみを含めてください。複数の問いかけを1つにまとめないでください。
+9. **反復を避ける**: **ユーザーが今言ったことを長々と繰り返す（オウム返し）のは避けてください。** 短い共感（例：「なるほど」「そうなんですね」）の後、すぐに深掘りするか、次のトピックに移ってください。
+10. **ボイスチャット最適化**: 「接続助詞（〜し、〜ですが）」による複合質問や、「その場合（もしよければ）、〜ですか？」といった条件付き質問は、聞き取りにくいため**絶対に禁止**します。
+11. **最小単位の質問**: 1つの質問は、相手が1つのトピックに集中して答えられる「最小単位」に分解してください。
+${introductionMessage ? `12. **導入メッセージとの重複を避ける**: 導入メッセージで既に説明した内容（取材の目的、ターゲット読者、掲載メディアなど）は、質問で繰り返さないでください。` : ''}
+
 
 ${confirmationContext ? `${confirmationContext}\n\n` : ''}【これまでの会話履歴】
 ${conversationText || '（まだ会話が始まっていません）'}
@@ -237,7 +311,9 @@ ${skillKnowledgeContext ? `5. **スキルナレッジベースの手法を実践
 【出力形式】
 説明文や前置きは一切含めず、質問文のみを出力してください。
 質問は自然な会話形式で、1-2文で簡潔にしてください。
+**最重要：1つの質問には1つのトピックのみを含め、単一の疑問文で構成してください。接続助詞（〜し、〜ですが）を使って複数の質問を繋げることは絶対に禁止します。**
 **重要：必ず完全な質問文を生成してください**
+
 - 「念の為、確認させていただきたいのですが、」のような前振りだけで終わらず、必ず質問の内容まで含めてください
 - 例（NG）：「念の為、確認させていただきたいのですが、」→ これは不完全です
 - 例（OK）：「念の為、確認させていただきたいのですが、お名前を教えていただけますか？」→ これは完全な質問です
@@ -267,7 +343,7 @@ ${skillKnowledgeContext ? `5. **スキルナレッジベースの手法を実践
     const lines = nextQuestion.split('\n')
     const validLines: string[] = []
     let foundFirstValidLine = false
-    
+
     for (const line of lines) {
       const trimmed = line.trim()
       // 空行や説明文をスキップ
@@ -278,14 +354,14 @@ ${skillKnowledgeContext ? `5. **スキルナレッジベースの手法を実践
         }
         continue
       }
-      
+
       // 最初の有効な行を見つけたら、それ以降の行も含める
       if (trimmed.length > 0) {
         foundFirstValidLine = true
         validLines.push(trimmed)
       }
     }
-    
+
     // 有効な行を結合（複数行の質問に対応）
     if (validLines.length > 0) {
       nextQuestion = validLines.join(' ').trim()
@@ -325,8 +401,8 @@ ${skillKnowledgeContext ? `5. **スキルナレッジベースの手法を実践
     console.error('❌ Error generating next question:', error)
     const errorMessage = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { 
-        error: '次の質問の生成に失敗しました', 
+      {
+        error: '次の質問の生成に失敗しました',
         details: errorMessage,
       },
       { status: 500 }

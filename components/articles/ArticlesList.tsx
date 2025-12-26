@@ -27,32 +27,43 @@ export function ArticlesList() {
     try {
       setLoading(true)
       setError(null)
-      
+
       // Check if Firebase is configured
       if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
         setError('Firebase設定が完了していません。.env.localファイルを確認してください。')
         setLoading(false)
         return
       }
-      
-      const publicArticles = await getArticles('public')
-      const companies = await getCompanies()
-      
-      // Combine articles with company data
-      const articlesWithCompany = publicArticles.map(article => {
-        const company = companies.find(c => c.id === article.companyId)
-        return { ...article, company }
-      })
-      
-      setArticles(articlesWithCompany)
-      setError(null)
+
+      try {
+        // Fetch articles and companies in parallel for better performance
+        const [publicArticles, companies] = await Promise.all([
+          getArticles('public'),
+          getCompanies().catch(err => {
+            console.warn('Error loading companies, continuing without company data:', err)
+            return [] as Company[]
+          })
+        ])
+
+        // Combine articles with company data
+        const articlesWithCompany = publicArticles.map(article => {
+          const company = companies.find(c => c.id === article.companyId)
+          return { ...article, company }
+        })
+
+        setArticles(articlesWithCompany)
+        setError(null)
+      } catch (err: any) {
+        console.error('Error in fetching process:', err)
+        throw err // Re-throw to be caught by the outer catch block
+      }
     } catch (err: any) {
       console.error('Error loading articles:', err)
       const errorMessage = err?.message || '記事の読み込みに失敗しました'
       if (errorMessage.includes('permission') || errorMessage.includes('PERMISSION_DENIED')) {
-        setError('Firestoreのアクセス権限がありません。Firebase設定を確認してください。')
+        setError('データのアクセス権限がありません。Firebaseの設定（Security Rules等）を確認してください。')
       } else if (errorMessage.includes('network') || errorMessage.includes('NETWORK')) {
-        setError('ネットワークエラーが発生しました。Firebase接続を確認してください。')
+        setError('ネットワークエラーが発生しました。接続を確認してください。')
       } else {
         setError(`記事の読み込みに失敗しました: ${errorMessage}`)
       }
@@ -142,8 +153,8 @@ export function ArticlesList() {
             {/* Company Logo */}
             <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
               {article.company?.logoUrl ? (
-                <img 
-                  src={article.company.logoUrl} 
+                <img
+                  src={article.company.logoUrl}
                   alt={article.company.name}
                   className="w-16 h-16 rounded-full object-cover"
                 />
@@ -151,11 +162,11 @@ export function ArticlesList() {
                 <BuildingIcon className="w-10 h-10 text-blue-600 dark:text-blue-400" />
               )}
             </div>
-            
+
             <CardTitle className="text-lg font-bold leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
               {article.finalArticle?.title || article.draftArticle.title}
             </CardTitle>
-            
+
             <div className="flex items-center justify-center gap-2 mt-2">
               <Badge variant="outline" className="text-xs">
                 {article.company?.name || '企業情報なし'}
@@ -167,7 +178,7 @@ export function ArticlesList() {
             <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
               {generateSnippet(article.finalArticle?.lead || article.draftArticle.lead)}
             </div>
-            
+
             <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-4">
               <div className="flex items-center gap-1">
                 <CalendarIcon className="w-3 h-3" />
@@ -179,7 +190,7 @@ export function ArticlesList() {
                 </Badge>
               )}
             </div>
-            
+
             <Link href={`/articles/${article.id}`}>
               <Button variant="gradient" className="w-full group">
                 記事を読む

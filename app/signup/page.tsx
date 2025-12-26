@@ -1,28 +1,31 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { AlertCircleIcon, EyeIcon, EyeOffIcon, UserPlusIcon, MailIcon, UserIcon } from 'lucide-react'
+import { AlertCircleIcon, EyeIcon, EyeOffIcon, UserPlusIcon, MailIcon, UserIcon, BuildingIcon } from 'lucide-react'
 
-export default function SignupPage() {
+function SignupContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [companyName, setCompanyName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  
+
   const { signUp } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectPath = searchParams.get('redirect')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!email || !password) {
       setError('メールアドレスとパスワードを入力してください')
       return
@@ -37,13 +40,14 @@ export default function SignupPage() {
     setError('')
 
     try {
-      await signUp(email, password, displayName || undefined)
+      await signUp(email, password, displayName || undefined, companyName || undefined)
       // Wait a bit for auth state to update
       await new Promise(resolve => setTimeout(resolve, 500))
-      router.push('/dashboard')
+      // リダイレクトパスがある場合はそこに遷移、なければダッシュボード
+      router.push(redirectPath || '/dashboard')
     } catch (err: any) {
       console.error('Signup error:', err)
-      
+
       let errorMessage = 'アカウント作成に失敗しました'
       if (err.code === 'auth/email-already-in-use') {
         errorMessage = 'このメールアドレスは既に使用されています'
@@ -54,7 +58,7 @@ export default function SignupPage() {
       } else if (err.message) {
         errorMessage = err.message
       }
-      
+
       setError(errorMessage)
     } finally {
       setLoading(false)
@@ -87,7 +91,7 @@ export default function SignupPage() {
               アカウント情報を入力してください
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
@@ -96,7 +100,27 @@ export default function SignupPage() {
                   <span className="text-sm text-red-600 dark:text-red-400">{error}</span>
                 </div>
               )}
-              
+
+              <div>
+                <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  企業名・組織名 <span className="text-xs text-gray-500">（任意）</span>
+                </label>
+                <div className="relative">
+                  <BuildingIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="companyName"
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    placeholder="企業名・組織名を入力（未入力の場合は自動生成）"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  企業名を入力すると、メディアサイトで記事公開時に企業情報として表示されます
+                </p>
+              </div>
+
               <div>
                 <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   表示名（任意）
@@ -113,7 +137,7 @@ export default function SignupPage() {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   メールアドレス
@@ -186,24 +210,36 @@ export default function SignupPage() {
         {/* Footer Links */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-4">
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
             >
               既にアカウントをお持ちの方はこちら
             </Link>
           </div>
-          
+
           <div className="text-xs text-gray-500 dark:text-gray-400">
             <p>アカウント作成することで、以下の機能にアクセスできます：</p>
-            <div className="flex justify-center gap-2 mt-2">
+            <div className="flex flex-wrap justify-center gap-2 mt-2">
               <Badge variant="outline">インタビュー作成</Badge>
               <Badge variant="secondary">記事生成</Badge>
+              <Badge variant="outline">メディア公開</Badge>
             </div>
+            <p className="mt-3 text-xs">
+              ✨ 作成した記事はメディアサイトで公開され、PRtimesのようにプレスリリースを掲載したり、インタビュー形式で自社を紹介できます
+            </p>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <SignupContent />
+    </Suspense>
   )
 }
 

@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { getFirebaseDb } from '@/src/lib/firebase'
 import { collection, query, where, getDocs, orderBy, Timestamp, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowLeftIcon, PlusIcon, MicIcon, CalendarIcon, UserIcon, BuildingIcon, LoaderIcon, EditIcon, TrashIcon, CopyIcon } from 'lucide-react'
+import { ArrowLeftIcon, PlusIcon, MicIcon, CalendarIcon, UserIcon, BuildingIcon, LoaderIcon, EditIcon, TrashIcon, CopyIcon, FileTextIcon } from 'lucide-react'
 import Link from 'next/link'
 import { InterviewSession } from '@/src/types'
+import { CreateInterviewModal } from '@/components/interviews/CreateInterviewModal'
 
 export default function InterviewsPage() {
   const { user, loading: authLoading } = useAuth()
@@ -19,6 +20,21 @@ export default function InterviewsPage() {
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // ブラウザのスクロール位置復元を無効化（最優先で実行）
+  useLayoutEffect(() => {
+    if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual'
+    }
+    // 即座にスクロール位置を最上部に設定
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+  }, [])
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -27,6 +43,118 @@ export default function InterviewsPage() {
       loadInterviews()
     }
   }, [user, authLoading, router])
+
+  // ページ読み込み時にスクロール位置を最上部に設定（レンダリング前）
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return
+    window.scrollTo(0, 0)
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    document.documentElement.scrollTop = 0
+    document.documentElement.scrollLeft = 0
+    document.body.scrollTop = 0
+    document.body.scrollLeft = 0
+  }, [])
+
+  // データ読み込み完了時にスクロール位置を最上部に設定
+  useLayoutEffect(() => {
+    if (!loading) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+  }, [loading])
+
+  // インタビューリストが更新された時にスクロール位置を最上部に設定
+  useLayoutEffect(() => {
+    if (interviews.length > 0) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+  }, [interviews.length])
+
+  // 追加のフォールバック：複数のタイミングでスクロール位置を設定
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const scrollToTop = () => {
+      window.scrollTo(0, 0)
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      if (document.documentElement) {
+        document.documentElement.scrollTop = 0
+        document.documentElement.scrollLeft = 0
+      }
+      if (document.body) {
+        document.body.scrollTop = 0
+        document.body.scrollLeft = 0
+      }
+      if (containerRef.current) {
+        containerRef.current.scrollTop = 0
+        containerRef.current.scrollLeft = 0
+      }
+    }
+
+    // 即座に実行
+    scrollToTop()
+
+    // 複数のタイミングで実行（リロード時の復元を防ぐ）
+    const timers = [
+      setTimeout(scrollToTop, 0),
+      setTimeout(scrollToTop, 10),
+      setTimeout(scrollToTop, 50),
+      setTimeout(scrollToTop, 100),
+      setTimeout(scrollToTop, 200),
+      setTimeout(scrollToTop, 500),
+      setTimeout(scrollToTop, 1000),
+    ]
+
+    return () => {
+      timers.forEach(timer => clearTimeout(timer))
+    }
+  }, [loading, interviews.length])
+
+  // ページ表示時（loadイベント）にもスクロール位置を最上部に設定
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleLoad = () => {
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+
+    // 既に読み込み完了している場合
+    if (document.readyState === 'complete') {
+      handleLoad()
+    } else {
+      window.addEventListener('load', handleLoad)
+    }
+
+    // DOMContentLoadedイベントでも実行
+    document.addEventListener('DOMContentLoaded', handleLoad)
+
+    return () => {
+      window.removeEventListener('load', handleLoad)
+      document.removeEventListener('DOMContentLoaded', handleLoad)
+    }
+  }, [])
+
+  // beforeunload時にスクロール位置を最上部に設定（リロード時の復元を防ぐ）
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleBeforeUnload = () => {
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [])
 
   const loadInterviews = async () => {
     if (!user?.companyId) return
@@ -95,10 +223,10 @@ export default function InterviewsPage() {
     try {
       setDeletingId(interviewId)
       await deleteDoc(doc(getFirebaseDb(), 'interviews', interviewId))
-      
+
       // リストから削除
       setInterviews(prev => prev.filter(interview => interview.id !== interviewId))
-      
+
       alert('✅ インタビューを削除しました')
     } catch (error) {
       console.error('Error deleting interview:', error)
@@ -114,47 +242,37 @@ export default function InterviewsPage() {
       return
     }
 
+    const newName = window.prompt(
+      '新しい対象者の名前を入力してください（空欄の場合は元の名前を引き継ぎます）:',
+      interview.intervieweeName
+    )
+
+    if (newName === null) return // キャンセル
+
     try {
       setDuplicatingId(interview.id)
 
       // 元のインタビューのデータをコピー
       const duplicatedData = {
-        companyId: user.companyId,
-        interviewerId: interview.interviewerId,
-        interviewerName: interview.interviewerName,
-        interviewerRole: interview.interviewerRole,
-        mode: interview.mode,
-        title: `${interview.title}（コピー）`,
-        intervieweeName: interview.intervieweeName,
-        confirmNameAtInterview: interview.confirmNameAtInterview,
-        intervieweeCompany: interview.intervieweeCompany,
-        confirmCompanyAtInterview: interview.confirmCompanyAtInterview,
-        intervieweeTitle: interview.intervieweeTitle,
-        confirmTitleAtInterview: interview.confirmTitleAtInterview,
-        intervieweeDepartment: interview.intervieweeDepartment,
-        confirmDepartmentAtInterview: interview.confirmDepartmentAtInterview,
-        intervieweeType: interview.intervieweeType,
-        isMultipleInterviewees: interview.isMultipleInterviewees,
-        category: interview.category,
-        targetAudience: interview.targetAudience,
-        mediaType: interview.mediaType,
-        interviewPurpose: interview.interviewPurpose,
-        objective: interview.objective,
-        questions: interview.questions, // 質問もコピー
-        knowledgeBaseIds: interview.knowledgeBaseIds, // ナレッジベースIDもコピー
+        ...interview,
+        title: `${interview.title.replace(/（コピー）| \(New Session\)/g, '')}（コピー）`,
+        intervieweeName: newName || interview.intervieweeName,
         status: 'active' as const,
         messages: [], // 会話履歴はコピーしない
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
 
+      // 不要なフィールドを削除/上書き
+      delete (duplicatedData as any).id
+
       const newInterviewRef = await addDoc(collection(getFirebaseDb(), 'interviews'), duplicatedData)
-      
+
       alert('✅ インタビューを複製しました')
-      
+
       // リストを再読み込み
       await loadInterviews()
-      
+
       // 編集ページに遷移
       router.push(`/dashboard/interviews/new?id=${newInterviewRef.id}`)
     } catch (error) {
@@ -164,6 +282,91 @@ export default function InterviewsPage() {
       setDuplicatingId(null)
     }
   }
+
+  // コンテナがマウントされた時にスクロール位置を最上部に設定
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const scrollToTop = () => {
+      window.scrollTo(0, 0)
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      if (document.documentElement) {
+        document.documentElement.scrollTop = 0
+        document.documentElement.scrollLeft = 0
+      }
+      if (document.body) {
+        document.body.scrollTop = 0
+        document.body.scrollLeft = 0
+      }
+      if (containerRef.current) {
+        containerRef.current.scrollTop = 0
+        containerRef.current.scrollLeft = 0
+      }
+    }
+
+    // 即座に実行
+    scrollToTop()
+
+    // 複数のタイミングで実行（レンダリング完了を待つ）
+    const timers = [
+      setTimeout(scrollToTop, 0),
+      setTimeout(scrollToTop, 10),
+      setTimeout(scrollToTop, 50),
+      setTimeout(scrollToTop, 100),
+      setTimeout(scrollToTop, 200),
+      setTimeout(scrollToTop, 500),
+      setTimeout(scrollToTop, 1000),
+    ]
+
+    return () => {
+      timers.forEach(timer => clearTimeout(timer))
+    }
+  }, [])
+
+  // データ読み込み完了時にもスクロール位置を最上部に設定
+  useEffect(() => {
+    if (!loading && typeof window !== 'undefined') {
+      const scrollToTop = () => {
+        window.scrollTo(0, 0)
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        document.documentElement.scrollTop = 0
+        document.documentElement.scrollLeft = 0
+        document.body.scrollTop = 0
+        document.body.scrollLeft = 0
+      }
+      scrollToTop()
+      setTimeout(scrollToTop, 0)
+      setTimeout(scrollToTop, 50)
+      setTimeout(scrollToTop, 100)
+      setTimeout(scrollToTop, 200)
+    }
+  }, [loading])
+
+  // ページ表示時（loadイベント）にもスクロール位置を最上部に設定
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleLoad = () => {
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+
+    // 既に読み込み完了している場合
+    if (document.readyState === 'complete') {
+      handleLoad()
+    } else {
+      window.addEventListener('load', handleLoad)
+    }
+
+    // DOMContentLoadedイベントでも実行
+    document.addEventListener('DOMContentLoaded', handleLoad)
+
+    return () => {
+      window.removeEventListener('load', handleLoad)
+      document.removeEventListener('DOMContentLoaded', handleLoad)
+    }
+  }, [])
 
   if (authLoading || loading) {
     return (
@@ -181,7 +384,11 @@ export default function InterviewsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div
+      ref={containerRef}
+      className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8"
+      style={{ scrollBehavior: 'auto' }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -203,12 +410,13 @@ export default function InterviewsPage() {
                 </p>
               </div>
             </div>
-            <Link href="/dashboard/interviews/new">
-              <Button className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white">
-                <PlusIcon className="w-4 h-4 mr-2" />
-                新規インタビュー作成
-              </Button>
-            </Link>
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white"
+            >
+              <PlusIcon className="w-4 h-4 mr-2" />
+              新規インタビュー作成
+            </Button>
           </div>
         </div>
 
@@ -230,12 +438,13 @@ export default function InterviewsPage() {
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 新しいインタビューを作成して開始しましょう
               </p>
-              <Link href="/dashboard/interviews/new">
-                <Button className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white">
-                  <PlusIcon className="w-4 h-4 mr-2" />
-                  新規インタビュー作成
-                </Button>
-              </Link>
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white"
+              >
+                <PlusIcon className="w-4 h-4 mr-2" />
+                新規インタビュー作成
+              </Button>
             </CardContent>
           </Card>
         ) : (
@@ -245,13 +454,12 @@ export default function InterviewsPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between mb-2">
                     <CardTitle className="text-lg line-clamp-2">{interview.title}</CardTitle>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ml-2 ${
-                      interview.status === 'active' 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                        : interview.status === 'paused'
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ml-2 ${interview.status === 'active'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                      : interview.status === 'paused'
                         ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
                         : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                    }`}>
+                      }`}>
                       {interview.status === 'active' ? '進行中' : interview.status === 'paused' ? '一時停止' : '完了'}
                     </span>
                   </div>
@@ -278,16 +486,16 @@ export default function InterviewsPage() {
                   )}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Link href={`/dashboard/interviews/${interview.id}/rehearsal`} className="flex-1">
-                        <Button variant="outline" className="w-full">
-                          <EditIcon className="w-4 h-4 mr-2" />
-                          リハーサル
-                        </Button>
-                      </Link>
                       <Link href={`/dashboard/interviews/${interview.id}`} className="flex-1">
                         <Button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white">
                           <MicIcon className="w-4 h-4 mr-2" />
-                          開く
+                          インタビュー
+                        </Button>
+                      </Link>
+                      <Link href={`/dashboard/articles/new?interviewId=${interview.id}`} className="flex-1">
+                        <Button className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white">
+                          <FileTextIcon className="w-4 h-4 mr-2" />
+                          記事作成
                         </Button>
                       </Link>
                     </div>
@@ -343,6 +551,14 @@ export default function InterviewsPage() {
           </div>
         )}
       </div>
+      <CreateInterviewModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onComplete={(id) => {
+          setIsCreateModalOpen(false)
+          loadInterviews()
+        }}
+      />
     </div>
   )
 }

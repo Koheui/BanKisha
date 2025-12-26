@@ -1,99 +1,46 @@
 #!/bin/bash
 
-# Cloud Run デプロイスクリプト
-# 使用方法: ./deploy.sh
-
-set -e  # エラーが発生したら停止
-
-echo "🚀 Cloud Run へのデプロイを開始します..."
-
-# プロジェクトID
+# Configuration
 PROJECT_ID="bankisha-654d0"
 REGION="asia-northeast1"
-SERVICE_NAME="bankisha-app"
-IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
+IMAGE_NAME="gcr.io/$PROJECT_ID/bankisha-app"
 
-# 環境変数ファイルの確認
-if [ ! -f .env.local ]; then
-    echo "❌ エラー: .env.local ファイルが見つかりません"
-    exit 1
-fi
+# Firebase Public Variables (Baked into build)
+FIREBASE_API_KEY="AIzaSyCUzoTeIWiF9padHk2filpKbKUHGV8Ding"
+FIREBASE_AUTH_DOMAIN="bankisha-654d0.firebaseapp.com"
+FIREBASE_PROJECT_ID="bankisha-654d0"
+FIREBASE_STORAGE_BUCKET="bankisha-654d0.firebasestorage.app"
+FIREBASE_MESSAGING_SENDER_ID="804747870600"
+FIREBASE_APP_ID="1:804747870600:web:5d8f65fba11629cd353a3d"
+FIREBASE_FUNCTIONS_URL="https://us-central1-bankisha-654d0.cloudfunctions.net"
 
-# 環境変数を読み込む
-source .env.local
+# Gemini API Key (Runtime)
+GEMINI_API_KEY="AIzaSyBULdve3vebMODO0A5C3CFQ8-SiLyxSaIA"
 
-# 必要な環境変数の確認
-REQUIRED_VARS=(
-    "NEXT_PUBLIC_FIREBASE_API_KEY"
-    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN"
-    "NEXT_PUBLIC_FIREBASE_PROJECT_ID"
-    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET"
-    "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID"
-    "NEXT_PUBLIC_FIREBASE_APP_ID"
-    "GEMINI_API_KEY"
-)
+# Firebase Admin Credentials (Runtime)
+FIREBASE_CLIENT_EMAIL="firebase-adminsdk-fbsvc@bankisha-654d0.iam.gserviceaccount.com"
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDBwojRvqJQGokE\nObBeBwtByJMi/yu4PCDU0O8kFbdPbDcHAu4zsTNmH5CUvmpjs4dcR61n5b+jQZKc\nfDVinGAA4hBR4uOfN4wVUD1/STub6Bm8v7C/chv1rqQyd+Psisjcr06985KZqPJ/\nDjAkmRgDN21lKKWJ/6yAkW7ZN9lxQLoHL9YJSzmmegNcczbUUcc4T2YzocTNEvAU\nt1VOcYOMj0ycD+QamTFhwynxca+CuRdopGCe9RfWkR9fcTKZ64YFBoSbN3KHt8l0\nQtZqkQWoLB0Qf6PlJDiQk9vmbrgjW1fXWBMvpTWEatpp/5QXHnVijlh5xVhvBc1k\nuyQ94az7AgMBAAECggEARzk1pvgO3Sgr5pA4KxAmzKsonuwyi3oazW/yAA81f231\nek/S9NB15tvCf1LRc83J+5tjfDYhcCcJ+BjWXOXDin+O5TLkXiICjdEdkfz++uvi\nDhZep7kP2wsz01Nrxocrl6efZ8axxGcsoJS8EK/v+jq1LUK4OxZvOCF9oD5d4Tl4\nAvhqT/Snhvx1dQyXrIdv2XoOMFajNSjXzsqnk01r9g+qntYYfc1SIzcMteCmnjxF\nnf2FWChaMGf2aqgl3QbYmpXifKNZGZ1ZG6XFiRJPCF7KO3B9FOG5/XUQ/AxvgW3c\nNY3nWQNizynxTKUa0Wth3kr4nPxwD0aFUXu7JT1AQQKBgQDxcYYZwNiEOjw6itmk\ngbzD925QOFBs3gCVBv6c7NR2OM61vLB1QUP6Bt1eNAxPakWIDCN1Jkj1CwRELvCm\ng8TTdOXIOZcKZla7YSPbSVon7t48oR/eXHXZRczfD1RdNhPPrhCaF6CcRqcTcHvS\nwbQhEEuRJ+jFUW/xkhnkv6keOwKBgQDNcQ4gkqdpVbv/Q5dCBthcLCG/N3iwHu7w\nBWa+JumGB47p1DvbY9z4vMsMrKZjkPlfJUwFulDslgsv4zFmbeie8RRp3vP+Nytk\nxDmixs4ODTwlJ6Gxh91sP9C7nOxWDPrgHlUlKnU7VWEzNKMCJ9dQDC4fGel8SZFp\nE6Xu18MAQQKBgQDGB7/etZ6g7Ybi2WnjlQm3jeUr5NSKRpgho4gIO/OTN8rLowT0\nV2Ci3SiKEJScOmTnTlVyy8EBQ1Tve7SkTuWMLpAdZqbsv72ZmPYo8QQCRth+0ATs\ng9ehKq/7sH4YqbccGv/A82onY4e72QGmfnv4tn3Ug/BWjxILCDM2vMDAawKBgAJ5\nKvdfbJ6LBrFjCe4kkPRDH8DilRRhuvSuy/bcFxGjA6hzAql4gU+JTlR/u50VQLtR\ngqHLBXBjugzAina2Oge31UwVABD+bwpOhnccN5zZsfCsknjFrve/qO6pS/sZOuf5\n1YKWCUVGmN3580ByZFg1XVTIhhQV+qcuMmA2vsVBAoGAb8EEl8uMN81A1CqxzYPh\nf/3wmNmhReAUUNzronxHVBJJquejk5WVKMaPKnnQcan07pUPGj6djbGJop/XF0Hj\n2iEIDGy5yll1FsXIUM6HHTA5QxYcC+rY0Jz3Jk5cTK7ZZmN5n9qAz8rBAv9Farmz\nj+mwEg6U0x4x6u1i8ZlzlC8=\n-----END PRIVATE KEY-----\n"
+FIREBASE_PROJECT_ID="bankisha-654d0"
 
-for var in "${REQUIRED_VARS[@]}"; do
-    if [ -z "${!var}" ]; then
-        echo "❌ エラー: 環境変数 $var が設定されていません"
-        exit 1
-    fi
-done
+echo "🚀 Starting deployment for $PROJECT_ID..."
 
-echo "✅ 環境変数の確認完了"
+# Build and Push using Cloud Build
+gcloud builds submit --config cloudbuild.yaml \
+  --substitutions=_IMAGE_NAME=$IMAGE_NAME,\
+_FIREBASE_API_KEY=$FIREBASE_API_KEY,\
+_FIREBASE_AUTH_DOMAIN=$FIREBASE_AUTH_DOMAIN,\
+_FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID,\
+_FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET,\
+_FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID,\
+_FIREBASE_APP_ID=$FIREBASE_APP_ID,\
+_FIREBASE_FUNCTIONS_URL=$FIREBASE_FUNCTIONS_URL
 
-# gcloud のログイン確認
-echo "🔐 gcloud の認証状態を確認..."
-if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q .; then
-    echo "⚠️  gcloud にログインしていません。ログインしてください:"
-    echo "   gcloud auth login"
-    exit 1
-fi
+# Deploy to Cloud Run
+gcloud run deploy bankisha-app \
+  --image $IMAGE_NAME \
+  --region $REGION \
+  --platform managed \
+  --allow-unauthenticated \
+  --set-env-vars GEMINI_API_KEY=$GEMINI_API_KEY,FIREBASE_CLIENT_EMAIL=$FIREBASE_CLIENT_EMAIL,FIREBASE_PRIVATE_KEY="$FIREBASE_PRIVATE_KEY",FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID
 
-# プロジェクトの設定確認
-CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "")
-if [ "$CURRENT_PROJECT" != "$PROJECT_ID" ]; then
-    echo "📝 プロジェクトを設定: $PROJECT_ID"
-    gcloud config set project "$PROJECT_ID"
-fi
-
-# 必要なAPIの有効化確認
-echo "🔧 必要なAPIが有効か確認..."
-gcloud services enable cloudbuild.googleapis.com --quiet || true
-gcloud services enable run.googleapis.com --quiet || true
-gcloud services enable containerregistry.googleapis.com --quiet || true
-
-# Dockerイメージのビルドとプッシュ
-echo "🏗️  DockerイメージをビルドしてGCRにプッシュ..."
-gcloud builds submit --tag "$IMAGE_NAME" || {
-    echo "❌ ビルドに失敗しました"
-    exit 1
-}
-
-echo "✅ ビルド完了"
-
-# Cloud Runにデプロイ
-echo "🚀 Cloud Runにデプロイ..."
-gcloud run deploy "$SERVICE_NAME" \
-    --image "$IMAGE_NAME" \
-    --platform managed \
-    --region "$REGION" \
-    --allow-unauthenticated \
-    --set-env-vars="NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY},NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN},NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID},NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET},NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID},NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID},NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL=${NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL},GEMINI_API_KEY=${GEMINI_API_KEY}" || {
-    echo "❌ デプロイに失敗しました"
-    exit 1
-}
-
-# デプロイURLの取得
-SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format 'value(status.url)')
-
-echo ""
-echo "✅ デプロイ完了！"
-echo "🌐 サービスURL: $SERVICE_URL"
-echo ""
-echo "📋 次のステップ:"
-echo "   1. ブラウザで $SERVICE_URL にアクセス"
-echo "   2. アプリの動作を確認"
-echo "   3. Firebase Hostingの設定を確認（必要に応じて）"
-echo ""
-
+echo "✅ Deployment complete!"

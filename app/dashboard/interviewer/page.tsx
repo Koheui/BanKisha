@@ -8,7 +8,7 @@ import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, s
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowLeftIcon, UserIcon, PlusIcon, EditIcon, TrashIcon, SaveIcon, XIcon, ImageIcon, UploadIcon, Volume2Icon, VolumeXIcon } from 'lucide-react'
+import { ArrowLeftIcon, UserIcon, PlusIcon, EditIcon, TrashIcon, SaveIcon, XIcon, ImageIcon, UploadIcon, Volume2Icon, VolumeXIcon, SparklesIcon } from 'lucide-react'
 import Link from 'next/link'
 import { InterviewerProfile, GeminiVoiceType } from '@/src/types'
 import { getFirebaseStorage } from '@/src/lib/firebase'
@@ -18,8 +18,52 @@ const VOICE_OPTIONS: { value: GeminiVoiceType; label: string; description: strin
   { value: 'Puck', label: 'Puck（パック）', description: '中性的で明るい声' },
   { value: 'Charon', label: 'Charon（カロン）', description: '落ち着いた低めの声' },
   { value: 'Kore', label: 'Kore（コレ）', description: '柔らかく優しい声' },
-  { value: 'Fenrir', label: 'Fenrir（フェンリル）', description: '力強く深みのある声' },
-  { value: 'Aoede', label: 'Aoede（アオイデ）', description: '穏やかで心地よい声' }
+  { value: 'Fenrir', label: 'Fenrir（フェンリル）', description: '知性的で深みのある声' },
+  { value: 'Aoede', label: 'Aoede（アオイデ）', description: '明るく親しみやすい声' }
+]
+
+// インタビュアーのテンプレート設定
+const INTERVIEWER_TEMPLATES = [
+  {
+    id: 'passionate',
+    name: '熱血記者',
+    role: '敏腕記者',
+    description: 'エネルギッシュで、本質に切り込む鋭い質問を投げかけます。',
+    prompt: 'あなたは熱血な記者です。相手の心に切り込むような質問を投げかけます。エネルギーに溢れ、読者をワクワクさせるような深いエピソードを徹底的に引き出そうとします。「なぜ」「どうして」を情熱的に尋ね、表面的な回答を許しません。',
+    voiceType: 'Charon' as GeminiVoiceType,
+    speakingRate: 1.2,
+    reactionPatterns: 'それは素晴らしいエピソードですね！\nもっと詳しく聞かせてください！\nなるほど、熱い想いを感じます。\nその時、魂が震えるような感覚はありましたか？\nまさに、プロの仕事ですね。'
+  },
+  {
+    id: 'empathetic',
+    name: '共感カウンセラー',
+    role: 'インタビュー専門カウンセラー',
+    description: '穏やかで温かく、相手の感情や想いに深く寄り添います。',
+    prompt: 'あなたは共感力の高いカウンセラーのようなインタビュアーです。相手の感情に寄り添い、安心感を与える対話を心がけます。「それは大変でしたね」「その時、どのようにお感じになりましたか？」といった、言葉になりにくい微細な感情や想いを優しく聞き出します。',
+    voiceType: 'Kore' as GeminiVoiceType,
+    speakingRate: 1.0,
+    reactionPatterns: 'そのお気持ち、よく分かります。\nそれは、大切にされている想いなのですね。\nお話しいただき、ありがとうございます。\n心が温まるようなお話です。\n無理にお話しいただかなくても大丈夫ですよ。'
+  },
+  {
+    id: 'logical',
+    name: '論理的アナリスト',
+    role: 'シニアアナリスト',
+    description: '事実、数値、論理を重視し、構造的に情報を整理します。',
+    prompt: 'あなたは論理的で冷静なアナリストです。事実とロジックを重視し、具体的かつ客観的な情報を引き出します。数値、経緯、構造を正確に把握しようとし、曖昧な部分を明確にするためのシャープな質問を投げかけます。プロフェッショナルで知的な口調を保ちます。',
+    voiceType: 'Fenrir' as GeminiVoiceType,
+    speakingRate: 1.1,
+    reactionPatterns: '非常に論理的で分かりやすいです。\n具体的数値や指標はありますか？\nなるほど、その構造的な要因は何でしょうか？\n事実関係を整理すると、そういうことですね。\n客観的に見て、非常に整合性が取れています。'
+  },
+  {
+    id: 'friendly',
+    name: '親しみやすい編集者',
+    role: 'コミュニティ編集者',
+    description: '雑談のようにリラックスした雰囲気で、自然な言葉を引き出します。',
+    prompt: 'あなたは親しみやすく、好奇心旺盛な編集者です。雑談を交えながら、リラックスした雰囲気で会話を進めます。難しい話も噛み砕いて聞き、相手が自然体で話せるようにリードします。「面白いですね！」「もっと聞かせてください」と、一人のファンとして応援するような姿勢で接します。',
+    voiceType: 'Aoede' as GeminiVoiceType,
+    speakingRate: 1.2,
+    reactionPatterns: 'うわぁ、面白いですね！\nそれ、もっと詳しく教えてください！\nあはは、最高ですね。\nなるほどなぁ、勉強になります！\nうんうん、分かります！'
+  }
 ]
 
 export default function InterviewerSettingsPage() {
@@ -48,6 +92,7 @@ export default function InterviewerSettingsPage() {
   const [photoPreview, setPhotoPreview] = useState<string>('')
   const [playingDemo, setPlayingDemo] = useState(false)
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -102,7 +147,25 @@ export default function InterviewerSettingsPage() {
     })
     setPhotoFile(null)
     setPhotoPreview('')
+    setSelectedTemplate(null)
     setShowDialog(true)
+  }
+
+  const applyTemplate = (templateId: string) => {
+    const template = INTERVIEWER_TEMPLATES.find(t => t.id === templateId)
+    if (!template) return
+
+    setFormData({
+      ...formData,
+      name: template.name,
+      role: template.role,
+      description: template.description,
+      prompt: template.prompt,
+      voiceType: template.voiceType,
+      speakingRate: template.speakingRate,
+      reactionPatterns: template.reactionPatterns
+    })
+    setSelectedTemplate(templateId)
   }
 
   const handleEdit = (interviewer: InterviewerProfile) => {
@@ -140,7 +203,7 @@ export default function InterviewerSettingsPage() {
     }
 
     setPhotoFile(file)
-    
+
     // プレビュー表示
     const reader = new FileReader()
     reader.onloadend = () => {
@@ -309,7 +372,7 @@ export default function InterviewerSettingsPage() {
           errorMessage = error.error || error.details || errorMessage
           helpUrl = error.helpUrl || ''
           console.error('API Error:', error)
-          
+
           // より分かりやすいエラーメッセージを表示
           if (error.status === 403) {
             const fullMessage = `${errorMessage}\n\n高品質な音声にはText-to-Speech APIの有効化が必要です。\n\n${helpUrl ? `有効化: ${helpUrl}` : 'Google Cloud ConsoleでText-to-Speech APIを有効化してください。'}`
@@ -490,11 +553,10 @@ export default function InterviewerSettingsPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <CardTitle className="text-lg">{interviewer.name}</CardTitle>
-                          <span className={`px-2 py-0.5 text-xs rounded ${
-                            interviewer.isActive
+                          <span className={`px-2 py-0.5 text-xs rounded ${interviewer.isActive
                               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
                               : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                          }`}>
+                            }`}>
                             {interviewer.isActive ? '有効' : '無効'}
                           </span>
                         </div>
@@ -560,6 +622,33 @@ export default function InterviewerSettingsPage() {
               </h2>
 
               <div className="space-y-4">
+                {/* Template Selection */}
+                {!editingId && (
+                  <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                    <label className="block text-sm font-semibold text-indigo-900 dark:text-indigo-300 mb-3">
+                      <SparklesIcon className="w-4 h-4 inline mr-1 text-indigo-600 dark:text-indigo-400" />
+                      テンプレートから作成（推奨）
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {INTERVIEWER_TEMPLATES.map((template) => (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => applyTemplate(template.id)}
+                          className={`p-2 text-xs rounded-lg border transition-all text-center flex flex-col items-center gap-1 ${selectedTemplate === template.id
+                              ? 'bg-white dark:bg-indigo-600 border-indigo-600 text-indigo-700 dark:text-white shadow-sm ring-2 ring-indigo-500/20'
+                              : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-indigo-300'
+                            }`}
+                        >
+                          <span className="font-bold">{template.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-indigo-600/70 dark:text-indigo-400/70 mt-2">
+                      各テンプレートには最適な声と性格（プロンプト）が設定されています。
+                    </p>
+                  </div>
+                )}
                 {/* Profile Photo */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -663,7 +752,7 @@ export default function InterviewerSettingsPage() {
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
                     Gemini 2.5 Flash Native Audioの音声タイプを選択します
                   </p>
-                  
+
                   {/* Speaking Rate */}
                   <div className="mt-4">
                     <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -687,7 +776,7 @@ export default function InterviewerSettingsPage() {
                       現在: {formData.speakingRate.toFixed(1)}x {formData.speakingRate > 1.0 ? '（速め）' : formData.speakingRate < 1.0 ? '（遅め）' : '（標準）'}
                     </p>
                   </div>
-                  
+
                   <div className="mt-3">
                     <Button
                       type="button"

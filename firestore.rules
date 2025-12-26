@@ -36,7 +36,7 @@ service cloud.firestore {
 
     // Companies collection
     match /companies/{companyId} {
-      allow read: if isAuthenticated();
+      allow read: if true; // Published company info for public articles list
       allow create: if isAdmin();
       allow update: if isAdmin() || belongsToCompany(companyId);
       allow delete: if isSuperAdmin();
@@ -44,8 +44,12 @@ service cloud.firestore {
 
     // Knowledge Bases collection
     match /knowledgeBases/{kbId} {
-      // Read: all authenticated users
-      allow read: if isAuthenticated();
+      // Read: skill/infoはsuperAdminのみ、userは認証済みユーザー
+      allow read: if isAuthenticated() && (
+        (resource.data.type == 'skill' && isSuperAdmin()) ||
+        (resource.data.type == 'info' && isSuperAdmin()) ||
+        (resource.data.type == 'user')
+      );
 
       // Create
       allow create: if isAuthenticated() && (
@@ -77,7 +81,8 @@ service cloud.firestore {
 
     // Articles collection
     match /articles/{articleId} {
-      allow read: if true; // Public read for published articles
+      // メディアサイト: status='public' の記事のみ読み取り可能
+      allow read: if resource.data.status == 'public' || isAuthenticated();
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (
         isAdmin() || 

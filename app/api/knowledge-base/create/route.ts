@@ -3,14 +3,12 @@ import * as admin from 'firebase-admin'
 import { initializeFirebaseAdmin } from '@/src/lib/firebase-admin'
 
 // Initialize Firebase Admin SDK
-initializeFirebaseAdmin()
-
-const db = admin.firestore()
-
 export async function POST(request: NextRequest) {
   try {
+    await initializeFirebaseAdmin()
+    const db = admin.firestore()
     console.log('📥 [API] Received knowledge base create request')
-    
+
     // Authorization check
     const authHeader = request.headers.get('Authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -23,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     const idToken = authHeader.split('Bearer ')[1]
     let decodedToken: admin.auth.DecodedIdToken
-    
+
     try {
       decodedToken = await admin.auth().verifyIdToken(idToken)
       console.log('✅ [API] Token verified:', decodedToken.uid)
@@ -53,7 +51,7 @@ export async function POST(request: NextRequest) {
     if (type === 'skill' || type === 'info') {
       const userDoc = await db.collection('users').doc(decodedToken.uid).get()
       const userData = userDoc.data()
-      
+
       if (!userData || userData.role !== 'superAdmin') {
         console.error('❌ [API] Permission denied: user is not superAdmin')
         return NextResponse.json(
@@ -76,23 +74,14 @@ export async function POST(request: NextRequest) {
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     }
 
-    // Add companyId for user type
-    if (type === 'user') {
-      const userDoc = await db.collection('users').doc(decodedToken.uid).get()
-      const userData = userDoc.data()
-      if (userData?.companyId) {
-        knowledgeBaseData.companyId = userData.companyId
-      }
-    }
-
     console.log('💾 [API] Creating Firestore document...')
-    
+
     try {
       const docRef = await db.collection('knowledgeBases').add(knowledgeBaseData)
       console.log('✅ [API] Firestore document created:', docRef.id)
 
       // Trigger Firebase Function for PDF processing
-      const functionUrl = process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL || 
+      const functionUrl = process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL ||
         'https://us-central1-bankisha-654d0.cloudfunctions.net'
       const processUrl = `${functionUrl}/processKnowledgeBasePDF`
 

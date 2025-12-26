@@ -4,12 +4,12 @@ import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase
 import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage'
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
 }
 
 // Firebase初期化（遅延初期化）
@@ -19,49 +19,50 @@ let dbInstance: Firestore | null = null
 let storageInstance: FirebaseStorage | null = null
 
 function initializeFirebase() {
+  const phase = typeof process !== 'undefined' ? process.env.NEXT_PHASE : 'unknown'
+
   // ビルド時は初期化をスキップ
-  if (typeof process !== 'undefined' && process.env.NEXT_PHASE === 'phase-production-build') {
+  if (phase === 'phase-production-build') {
     return null
   }
 
   if (app) return app
 
   try {
-    // 環境変数が設定されている場合のみ初期化
-    // クライアント側では、NEXT_PUBLIC_プレフィックスの環境変数がビルド時に埋め込まれる
-    if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+    const hasApiKey = !!firebaseConfig.apiKey
+    const hasProjectId = !!firebaseConfig.projectId
+
+    if (hasApiKey && hasProjectId) {
+      if (typeof window !== 'undefined') {
+        console.log('🔥 Initializing Firebase for project:', firebaseConfig.projectId)
+      }
       app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
-      
-      // サービスを初期化
+
       if (app) {
         try {
           authInstance = getAuth(app)
           dbInstance = getFirestore(app)
           storageInstance = getStorage(app)
         } catch (serviceError) {
-          // サービス初期化エラーを無視（ビルド時）
-          if (process.env.NEXT_PHASE !== 'phase-production-build') {
-            console.warn('⚠️ Firebase services initialization failed:', serviceError)
-          }
+          console.warn('⚠️ Firebase services initialization failed:', serviceError)
         }
       }
     } else {
-      // 環境変数が設定されていない場合のエラーメッセージ
       if (typeof window !== 'undefined') {
         console.error('❌ Firebase環境変数が設定されていません:', {
-          apiKey: !!firebaseConfig.apiKey,
-          projectId: !!firebaseConfig.projectId,
-          authDomain: !!firebaseConfig.authDomain
+          apiKeyPresent: hasApiKey,
+          projectIdPresent: hasProjectId,
+          authDomainPresent: !!firebaseConfig.authDomain,
+          phase: phase,
         })
       }
     }
   } catch (error) {
-    // ビルド時はエラーを完全に無視
-    if (process.env.NEXT_PHASE !== 'phase-production-build') {
+    if (phase !== 'phase-production-build') {
       console.error('❌ Firebase initialization failed:', error)
     }
   }
-  
+
   return app
 }
 

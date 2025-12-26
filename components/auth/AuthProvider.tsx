@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User as FirebaseUser, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore'
 import { getFirebaseAuth, getFirebaseDb } from '@/src/lib/firebase'
+import * as firestoreLib from '../../src/lib/firestore'
 
 interface UserData {
   uid: string
@@ -12,6 +13,8 @@ interface UserData {
   companyId?: string
   displayName?: string
   photoURL?: string
+  bio?: string
+  customGenres?: string[]
 }
 
 interface AuthContextType {
@@ -20,16 +23,16 @@ interface AuthContextType {
   firebaseUser: FirebaseUser | null
   logout: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, displayName?: string) => Promise<void>
+  signUp: (email: string, password: string, displayName?: string, companyName?: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   firebaseUser: null,
-  logout: async () => {},
-  signIn: async () => {},
-  signUp: async () => {}
+  logout: async () => { },
+  signIn: async () => { },
+  signUp: async (_email: string, _password: string, _displayName?: string, _companyName?: string) => { },
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -57,18 +60,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signUp = async (email: string, password: string, displayName?: string) => {
+  const signUp = async (email: string, password: string, displayName?: string, companyName?: string) => {
     try {
       const firebaseAuth = getFirebaseAuth()
       const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password)
       const user = userCredential.user
-      
-      // Create user document in Firestore
+
+      // Create company for the user
       const firestoreDb = getFirebaseDb()
+      let companyId: string | null = null
+
+      if (companyName) {
+        companyId = await firestoreLib.initializeCompany(companyName, user.uid)
+      } else {
+        // 企業名がない場合は、メールアドレスのドメインから自動生成
+        const domain = email.split('@')[1] || '個人'
+        const autoCompanyName = `${domain} (${displayName || 'ユーザー'})`
+        companyId = await firestoreLib.initializeCompany(autoCompanyName, user.uid)
+      }
+
+      // Create user document in Firestore
       await setDoc(doc(firestoreDb, 'users', user.uid), {
         email: user.email,
         displayName: displayName || null,
         role: 'user',
+        companyId: companyId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       })
@@ -89,35 +105,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const firebaseAuth = getFirebaseAuth()
+      let unsubscribeUserDoc: (() => void) | null = null
+
       const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
         if (!isMounted) return
-        
+
         clearTimeout(timeoutId)
         setFirebaseUser(firebaseUser)
-        
+
+        // 前のリスナーがあれば解除
+        if (unsubscribeUserDoc) {
+          unsubscribeUserDoc()
+          unsubscribeUserDoc = null
+        }
+
         if (firebaseUser) {
-          try {
-            // Firestoreからユーザーデータを取得（タイムアウト付き）
-            const firestoreDb = getFirebaseDb()
-            const userDocRef = doc(firestoreDb, 'users', firebaseUser.uid)
-            const userDoc = await Promise.race([
-              getDoc(userDocRef),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Firestore timeout')), 5000)
-              )
-            ]) as any
-            
+          // Firestoreからユーザーデータを取得（onSnapshotでリアルタイム同期）
+          const firestoreDb = getFirebaseDb()
+          const userDocRef = doc(firestoreDb, 'users', firebaseUser.uid)
+
+          unsubscribeUserDoc = onSnapshot(userDocRef, (snapshot) => {
             if (!isMounted) return
-            
-            if (userDoc && userDoc.exists && userDoc.exists()) {
-              const userData = userDoc.data()
+
+            if (snapshot.exists()) {
+              const userData = snapshot.data()
               setUser({
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
                 role: userData.role || 'user',
                 companyId: userData.companyId,
                 displayName: firebaseUser.displayName || userData.displayName,
-                photoURL: firebaseUser.photoURL || userData.photoURL
+                photoURL: firebaseUser.photoURL || userData.photoURL,
+                bio: userData.bio,
+                customGenres: userData.customGenres || []
               })
             } else {
               // Firestoreにユーザードキュメントがない場合、デフォルトのuser roleを設定
@@ -129,22 +149,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 photoURL: firebaseUser.photoURL || undefined
               })
             }
-          } catch (error) {
-            console.error('Error fetching user data:', error)
+            setLoading(false)
+            clearTimeout(timeoutId)
+          }, (err) => {
+            console.error('Error fetching user data:', err)
             if (!isMounted) return
-            // エラーが発生しても、基本的なユーザー情報は設定する
             setUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               role: 'user'
             })
-          }
+            setLoading(false)
+            clearTimeout(timeoutId)
+          })
         } else {
           setUser(null)
-        }
-        
-        if (isMounted) {
           setLoading(false)
+          clearTimeout(timeoutId)
         }
       })
 
@@ -152,6 +173,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isMounted = false
         clearTimeout(timeoutId)
         unsubscribe()
+        if (unsubscribeUserDoc) {
+          unsubscribeUserDoc()
+        }
       }
     } catch (error) {
       console.error('Auth initialization error:', error)

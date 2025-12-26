@@ -9,11 +9,11 @@ import { getArticles, deleteArticle } from '@/src/lib/firestore'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { 
-  ArrowLeftIcon, 
-  LoaderIcon, 
-  FileTextIcon, 
-  EditIcon, 
+import {
+  ArrowLeftIcon,
+  LoaderIcon,
+  FileTextIcon,
+  EditIcon,
   TrashIcon,
   PlusIcon,
   FilterIcon,
@@ -79,15 +79,16 @@ export default function ArticlesPage() {
       setDeletingId(null)
     }
   }
-
   const getStatusBadge = (status: ArticleStatus) => {
-    const statusConfig = {
+    const statusConfig: Record<string, { label: string; className: string }> = {
       draft: { label: '下書き', className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
+      review: { label: '審査中', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
+      published: { label: '公開中', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
       submitted: { label: '提出済み', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
-      approved: { label: '承認済み', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+      approved: { label: '承認済み', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
       public: { label: '公開', className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' }
     }
-    
+
     const config = statusConfig[status] || statusConfig.draft
     return (
       <Badge className={config.className}>
@@ -95,6 +96,7 @@ export default function ArticlesPage() {
       </Badge>
     )
   }
+
 
   const formatDate = (date: Date | undefined) => {
     if (!date) return '-'
@@ -158,51 +160,46 @@ export default function ArticlesPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setStatusFilter('all')}
-                className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                  statusFilter === 'all'
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
+                className={`px-3 py-1 rounded-full text-sm transition-colors ${statusFilter === 'all'
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
               >
                 すべて
               </button>
               <button
                 onClick={() => setStatusFilter('draft')}
-                className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                  statusFilter === 'draft'
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
+                className={`px-3 py-1 rounded-full text-sm transition-colors ${statusFilter === 'draft'
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
               >
                 下書き
               </button>
               <button
                 onClick={() => setStatusFilter('submitted')}
-                className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                  statusFilter === 'submitted'
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
+                className={`px-3 py-1 rounded-full text-sm transition-colors ${statusFilter === 'submitted'
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
               >
                 提出済み
               </button>
               <button
                 onClick={() => setStatusFilter('approved')}
-                className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                  statusFilter === 'approved'
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
+                className={`px-3 py-1 rounded-full text-sm transition-colors ${statusFilter === 'approved'
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
               >
                 承認済み
               </button>
               <button
                 onClick={() => setStatusFilter('public')}
-                className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                  statusFilter === 'public'
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
+                className={`px-3 py-1 rounded-full text-sm transition-colors ${statusFilter === 'public'
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
               >
                 公開
               </button>

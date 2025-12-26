@@ -3,10 +3,9 @@ import * as admin from 'firebase-admin'
 import { initializeFirebaseAdmin } from '@/src/lib/firebase-admin'
 
 // Initialize Firebase Admin SDK
-initializeFirebaseAdmin()
-
 export async function POST(request: NextRequest) {
   try {
+    await initializeFirebaseAdmin()
     console.log('🔄 [Restore API] Starting...')
     const { knowledgeBaseId, contentType, version } = await request.json()
     console.log('📥 Request params:', { knowledgeBaseId, contentType, version })

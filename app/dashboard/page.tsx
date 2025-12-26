@@ -18,10 +18,13 @@ import {
   UserIcon,
   TrashIcon
 } from 'lucide-react'
+import { useState } from 'react'
+import { CreateInterviewModal } from '@/components/interviews/CreateInterviewModal'
 
 export default function DashboardPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -101,7 +104,7 @@ export default function DashboardPage() {
                 </Card>
               </Link>
 
-              {/* Info Knowledge Base */}
+              {/* Info Knowledge Base (De-emphasized)
               <Link href="/admin/info-kb">
                 <Card className="border-2 border-red-200 dark:border-red-800 shadow-md hover:shadow-lg hover:border-red-300 dark:hover:border-red-700 transition-all cursor-pointer h-full bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950 dark:to-rose-950">
                   <CardHeader>
@@ -117,6 +120,7 @@ export default function DashboardPage() {
                   </CardHeader>
                 </Card>
               </Link>
+              */}
 
               {/* Trash */}
               <Link href="/admin/trash">
@@ -199,7 +203,7 @@ export default function DashboardPage() {
             </Link>
 
             {/* Create Interview */}
-            <Link href="/dashboard/interviews/new">
+            <div onClick={() => setIsCreateModalOpen(true)}>
               <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer h-full">
                 <CardHeader>
                   <div className="flex items-center gap-3 mb-2">
@@ -213,7 +217,7 @@ export default function DashboardPage() {
                   </CardDescription>
                 </CardHeader>
               </Card>
-            </Link>
+            </div>
 
             {/* Articles */}
             <Link href="/dashboard/articles">
@@ -227,6 +231,23 @@ export default function DashboardPage() {
                   </div>
                   <CardDescription>
                     作成した記事の確認・編集・公開
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+
+            {/* Profile Settings */}
+            <Link href="/dashboard/profile">
+              <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardHeader>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-12 h-12 bg-gradient-to-r from-gray-600 to-gray-800 rounded-lg flex items-center justify-center">
+                      <SettingsIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <CardTitle className="text-lg">プロフィール設定</CardTitle>
+                  </div>
+                  <CardDescription>
+                    アカウント情報の確認・編集
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -281,6 +302,14 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+      <CreateInterviewModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onComplete={(id) => {
+          setIsCreateModalOpen(false)
+          router.push(`/dashboard/interviews`)
+        }}
+      />
     </div>
   )
 }

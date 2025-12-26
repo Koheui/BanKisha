@@ -4,23 +4,30 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { Badge } from '@/components/ui/badge'
-import { 
-  MenuIcon, 
-  UserIcon, 
+import {
+  MenuIcon,
+  UserIcon,
   LogOutIcon,
   FileTextIcon,
   SettingsIcon
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/src/lib/utils'
+import { useRouter } from 'next/navigation'
 
 export function Header() {
   const { user, loading, logout } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const router = useRouter()
 
-  const handleLogout = () => {
-    logout()
-    setMobileMenuOpen(false)
+  const handleLogout = async () => {
+    try {
+      await logout()
+      setMobileMenuOpen(false)
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout error in Header:', error)
+    }
   }
 
   return (
@@ -37,22 +44,19 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/articles" className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors">
-              記事一覧
-            </Link>
-            
+
             {user && (
               <>
                 <Link href="/dashboard" className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors">
                   ダッシュボード
                 </Link>
-                
+
                 {user?.role === 'superAdmin' && (
                   <Badge className="text-xs bg-red-600 text-white hover:bg-red-700 border-red-600">
                     Super Admin
                   </Badge>
                 )}
-                
+
                 {user?.role === 'admin' && (
                   <Badge variant="secondary" className="text-xs">
                     管理者
@@ -68,17 +72,20 @@ export function Header() {
               <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse" />
             ) : user ? (
               <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2">
+                <Link
+                  href="/dashboard/profile"
+                  className="flex items-center space-x-2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
                   <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                     <UserIcon className="w-4 h-4 text-white" />
                   </div>
                   <span className="text-sm text-gray-700 dark:text-gray-300">
                     {user?.displayName || user?.email || 'ユーザー'}
                   </span>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={handleLogout}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
@@ -114,26 +121,23 @@ export function Header() {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 dark:border-gray-800 py-4">
             <div className="flex flex-col space-y-4">
-              <Link 
-                href="/articles" 
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                記事一覧
-              </Link>
-              
+
               {user && (
                 <>
-                  <Link 
-                    href="/dashboard" 
+                  <Link
+                    href="/dashboard"
                     className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     ダッシュボード
                   </Link>
-                  
+
                   <div className="flex items-center justify-between py-2">
-                    <div className="flex items-center space-x-2">
+                    <Link
+                      href="/dashboard/profile"
+                      className="flex items-center space-x-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
                       <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
                         <UserIcon className="w-3 h-3 text-white" />
                       </div>
@@ -150,10 +154,10 @@ export function Header() {
                           管理者
                         </Badge>
                       )}
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={handleLogout}
                     >
                       <LogOutIcon className="w-4 h-4" />
@@ -161,7 +165,7 @@ export function Header() {
                   </div>
                 </>
               )}
-              
+
               {!user && !loading && (
                 <div className="flex flex-col space-y-2">
                   <Link href="/login">

@@ -1,0 +1,1 @@
+Fix: app/dashboard/articles/page.tsxでcompanyIdを渡すように修正、app/interview/[id]/page.tsxのビルドエラーを修正

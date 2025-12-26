@@ -12,14 +12,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 // 質問文字列を配列にパースする関数
 const parseQuestions = (questionsText?: string, objective?: string): string[] => {
   if (!questionsText && !objective) return []
-  
+
   // questionsTextがある場合はそれを使用（優先）
   if (questionsText && questionsText.trim()) {
     console.log('📝 questionsTextを使用:', questionsText.substring(0, 100))
     // 改行で分割し、空行を除去
     const lines = questionsText.split('\n').filter(line => line.trim())
     const questions: string[] = []
-    
+
     for (const line of lines) {
       const trimmed = line.trim()
       // 番号（1. 2. など）を除去
@@ -28,44 +28,44 @@ const parseQuestions = (questionsText?: string, objective?: string): string[] =>
         questions.push(cleaned)
       }
     }
-    
+
     // パースできた場合は返す
     if (questions.length > 0) {
       console.log('✅ 質問をパースしました:', questions.length, '個')
       return questions
     }
-    
+
     // パースできなかった場合は、元の文字列をそのまま返す
     if (questionsText.trim().length > 0) {
       console.log('⚠️ パースできなかったため、元の文字列をそのまま使用')
       return [questionsText.trim()]
     }
   }
-  
+
   // questionsTextがない場合はobjectiveから質問を抽出
   if (objective && objective.trim()) {
     // まず、改行で分割を試みる
     let lines = objective.split('\n').map(line => line.trim()).filter(line => line.length > 0)
-    
+
     // 改行がない場合は、疑問符で分割を試みる（「？」「?」）
     if (lines.length <= 1) {
       lines = objective.split(/[？\?]/).map(line => line.trim()).filter(line => line.length > 0)
     }
-    
+
     // それでも1つしかない場合は、句点で分割を試みる
     if (lines.length <= 1) {
       lines = objective.split(/[。！]/).map(line => line.trim()).filter(line => line.length > 0)
     }
-    
+
     // 抽出できた場合は返す
     if (lines.length > 0) {
       return lines
     }
-    
+
     // それでも抽出できなければ、objective全体を1つの質問として扱う
     return [objective.trim()]
   }
-  
+
   return []
 }
 
@@ -85,7 +85,7 @@ export default function PublicInterviewPage() {
   const [progressEvaluation, setProgressEvaluation] = useState<any>(null)
   const [evaluatingProgress, setEvaluatingProgress] = useState(false)
   const evaluationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  
+
   // リハーサルモード関連の状態
   const [isRehearsalMode, setIsRehearsalMode] = useState(false)
   const [isRehearsalActive, setIsRehearsalActive] = useState(false)
@@ -114,10 +114,10 @@ export default function PublicInterviewPage() {
         console.error('❌ AudioContextがサポートされていません')
         return
       }
-      
+
       const audioContext = new AudioContextClass()
       console.log('✅ AudioContextを作成しました。状態:', audioContext.state)
-      
+
       // AudioContextがsuspended状態の場合はresumeを試みる
       if (audioContext.state === 'suspended') {
         console.log('⏸️ AudioContextがsuspended状態です。resumeを試みます...')
@@ -129,7 +129,7 @@ export default function PublicInterviewPage() {
           return
         }
       }
-      
+
       // resume後、状態がrunningになるまで少し待つ
       if (audioContext.state !== 'running') {
         console.warn('⚠️ AudioContextの状態がrunningではありません:', audioContext.state)
@@ -144,26 +144,26 @@ export default function PublicInterviewPage() {
           }
         }
       }
-      
+
       const oscillator = audioContext.createOscillator()
       const gainNode = audioContext.createGain()
-      
+
       oscillator.connect(gainNode)
       gainNode.connect(audioContext.destination)
-      
+
       // knock音の設定（短い低音）
       oscillator.type = 'sine' // サイン波を使用
       oscillator.frequency.setValueAtTime(200, audioContext.currentTime)
       oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.1)
-      
+
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1)
-      
+
       oscillator.start(audioContext.currentTime)
       oscillator.stop(audioContext.currentTime + 0.1)
-      
+
       console.log('✅ 効果音のoscillatorを開始しました')
-      
+
       oscillator.onended = () => {
         console.log('✅ 効果音の再生が完了しました')
         setTimeout(() => {
@@ -172,7 +172,7 @@ export default function PublicInterviewPage() {
           })
         }, 100)
       }
-      
+
     } catch (error) {
       console.error('❌ 効果音の再生エラー:', error)
     }
@@ -193,11 +193,11 @@ export default function PublicInterviewPage() {
   useEffect(() => {
     const checkAndDeleteRehearsal = async () => {
       if (!interviewId || !interview) return
-      
+
       // 本番メッセージ（messages）が存在し、リハーサルメッセージも存在する場合
       const hasRealMessages = interview.messages && interview.messages.length > 0
       const hasRehearsalMessages = interview.rehearsalMessages && interview.rehearsalMessages.length > 0
-      
+
       if (hasRealMessages && hasRehearsalMessages) {
         console.log('🗑️ 本番録音が開始されたため、リハーサルメッセージを削除します')
         try {
@@ -215,7 +215,7 @@ export default function PublicInterviewPage() {
         }
       }
     }
-    
+
     checkAndDeleteRehearsal()
   }, [interview?.messages, interviewId, interview])
 
@@ -226,9 +226,9 @@ export default function PublicInterviewPage() {
       const firestoreDb = getFirebaseDb()
       const docRef = doc(firestoreDb, 'interviews', interviewId)
       const docSnap = await getDoc(docRef)
-      
+
       console.log('📋 インタビュードキュメントの存在確認:', docSnap.exists(), 'ID:', interviewId)
-      
+
       if (docSnap.exists()) {
         const data = docSnap.data()
         console.log('✅ インタビューデータを取得しました:', {
@@ -242,7 +242,7 @@ export default function PublicInterviewPage() {
           id: docSnap.id,
           ...data
         })
-        
+
         // インタビュアープロファイルを読み込む
         if (data.interviewerId) {
           const interviewerDocRef = doc(getFirebaseDb(), 'interviewers', data.interviewerId)
@@ -255,7 +255,7 @@ export default function PublicInterviewPage() {
             })
           }
         }
-        
+
         // 質問を読み込む
         if (data.questions) {
           const parsedQuestions = parseQuestions(data.questions, data.objective)
@@ -267,7 +267,7 @@ export default function PublicInterviewPage() {
           console.log('📋 objectiveから質問を抽出しました:', parsedQuestions.length, '個')
           setQuestions(parsedQuestions)
         }
-        
+
         // リハーサルメッセージを読み込む
         if (data.rehearsalMessages && Array.isArray(data.rehearsalMessages)) {
           setRehearsalMessages(data.rehearsalMessages.map((msg: any) => ({
@@ -275,7 +275,7 @@ export default function PublicInterviewPage() {
             content: msg.content
           })))
         }
-        
+
         // 会話履歴を読み込む（リハーサルメッセージと通常メッセージを結合）
         const allMessages = [
           ...(data.rehearsalMessages || []),
@@ -285,9 +285,9 @@ export default function PublicInterviewPage() {
           const bTime = b.timestamp?.toDate?.() || b.timestamp || new Date(0)
           return aTime.getTime() - bTime.getTime()
         })
-        
+
         setMessages(allMessages)
-        
+
         // 開始時刻を設定（最初のメッセージの時刻）
         if (allMessages.length > 0) {
           const firstMessage = allMessages[0]
@@ -296,12 +296,12 @@ export default function PublicInterviewPage() {
             setStartTime(firstTime instanceof Date ? firstTime : new Date(firstTime))
           }
         }
-        
+
         // リアルタイムでメッセージを監視
         const unsubscribe = onSnapshot(docRef, (snapshot) => {
           if (snapshot.exists()) {
             const updatedData = snapshot.data()
-            
+
             // リハーサルメッセージを更新
             if (updatedData.rehearsalMessages && Array.isArray(updatedData.rehearsalMessages)) {
               setRehearsalMessages(updatedData.rehearsalMessages.map((msg: any) => ({
@@ -309,7 +309,7 @@ export default function PublicInterviewPage() {
                 content: msg.content
               })))
             }
-            
+
             const updatedMessages = [
               ...(updatedData.rehearsalMessages || []),
               ...(updatedData.messages || [])
@@ -318,10 +318,10 @@ export default function PublicInterviewPage() {
               const bTime = b.timestamp?.toDate?.() || b.timestamp || new Date(0)
               return aTime.getTime() - bTime.getTime()
             })
-            
+
             const previousMessagesCount = messages.length
             setMessages(updatedMessages)
-            
+
             // 開始時刻を設定（最初のメッセージの時刻）
             if (updatedMessages.length > 0 && !startTime) {
               const firstMessage = updatedMessages[0]
@@ -330,7 +330,7 @@ export default function PublicInterviewPage() {
                 setStartTime(firstTime instanceof Date ? firstTime : new Date(firstTime))
               }
             }
-            
+
             // メッセージが増えた場合は生成中を解除
             if (updatedMessages.length > previousMessagesCount) {
               setIsGenerating(false)
@@ -338,21 +338,21 @@ export default function PublicInterviewPage() {
                 clearTimeout(generatingTimeoutRef.current)
                 generatingTimeoutRef.current = null
               }
-              
+
               // 進捗を再評価（回答が追加された場合）
               if (updatedMessages.length > 0 && interview?.objective) {
                 // 前回のタイムアウトをクリア
                 if (evaluationTimeoutRef.current) {
                   clearTimeout(evaluationTimeoutRef.current)
                 }
-                
+
                 // 2秒後に進捗を評価（回答が完全に追加されるのを待つ）
                 evaluationTimeoutRef.current = setTimeout(() => {
                   evaluateProgress(updatedMessages)
                 }, 2000)
               }
             }
-            
+
             // 最後のメッセージがインタビュアーからの質問で、次のメッセージがまだない場合は生成中と判断
             const lastMessage = updatedMessages[updatedMessages.length - 1]
             if (lastMessage && lastMessage.role === 'interviewer') {
@@ -360,7 +360,7 @@ export default function PublicInterviewPage() {
               if (generatingTimeoutRef.current) {
                 clearTimeout(generatingTimeoutRef.current)
               }
-              
+
               // 1秒後に生成中と判断（実際の生成処理が開始されるまでの時間）
               generatingTimeoutRef.current = setTimeout(() => {
                 setIsGenerating(true)
@@ -375,7 +375,7 @@ export default function PublicInterviewPage() {
             }
           }
         })
-        
+
         return () => unsubscribe()
       } else {
         console.error('❌ インタビューが見つかりません。ID:', interviewId)
@@ -400,10 +400,10 @@ export default function PublicInterviewPage() {
 
   const evaluateProgress = async (conversationHistory: Array<{ role: string, content: string }>) => {
     if (!interview?.objective || !interview?.knowledgeBaseIds) return
-    
+
     try {
       setEvaluatingProgress(true)
-      
+
       const response = await fetch('/api/interview/evaluate-progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -436,7 +436,7 @@ export default function PublicInterviewPage() {
       const timer = setTimeout(() => {
         evaluateProgress(messages)
       }, 1000) // 1秒後に評価（メッセージが安定するのを待つ）
-      
+
       return () => clearTimeout(timer)
     }
   }, [messages.length, interview?.objective, progressEvaluation, evaluatingProgress])
@@ -450,7 +450,7 @@ export default function PublicInterviewPage() {
         recognition.continuous = true
         recognition.interimResults = true
         recognition.lang = 'ja-JP'
-        
+
         recognition.onresult = (event: any) => {
           // 質問の読み上げ開始直後（5秒以内）は質問の音声を誤認識する可能性があるため、無視する
           const timeSinceQuestionStart = Date.now() - questionPlaybackStartTimeRef.current
@@ -461,10 +461,10 @@ export default function PublicInterviewPage() {
             })
             return
           }
-          
+
           let interimTranscript = ''
           let newFinalTranscript = ''
-          
+
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript
             if (event.results[i].isFinal) {
@@ -473,21 +473,21 @@ export default function PublicInterviewPage() {
               interimTranscript += transcript
             }
           }
-          
+
           // transcriptRefに累積
           if (newFinalTranscript) {
             transcriptRef.current += newFinalTranscript
           }
-          
+
           // 表示用の文字起こし（累積 + 暫定）
           const fullTranscript = transcriptRef.current + interimTranscript
           setCurrentTranscript(fullTranscript)
-          
+
           // 無音タイムアウトをリセット
           if (silenceTimeoutRef.current) {
             clearTimeout(silenceTimeoutRef.current)
           }
-          
+
           // 最終的な回答が確定したら、一定時間無音が続いたら処理（10文字以上の場合のみ）
           if (newFinalTranscript && transcriptRef.current.trim().length >= 10) {
             silenceTimeoutRef.current = setTimeout(() => {
@@ -499,20 +499,20 @@ export default function PublicInterviewPage() {
             }, 3000) // 3秒無音が続いたら処理
           }
         }
-        
+
         recognition.onstart = () => {
           isRecognitionActiveRef.current = true
           setListening(true)
           console.log('✅ 音声認識が開始されました')
         }
-        
+
         recognition.onerror = (event: any) => {
           if (event.error === 'aborted') {
             isRecognitionActiveRef.current = false
             setListening(false)
             return
           }
-          
+
           // "no-speech"エラーは正常な動作の一部なので、エラーログを出さない
           if (event.error === 'no-speech') {
             isRecognitionActiveRef.current = false
@@ -533,18 +533,18 @@ export default function PublicInterviewPage() {
             }
             return
           }
-          
+
           // その他のエラーはログに記録
           console.error('音声認識エラー:', event.error)
           isRecognitionActiveRef.current = false
           setListening(false)
         }
-        
+
         recognition.onend = () => {
           isRecognitionActiveRef.current = false
           setListening(false)
           console.log('⏹️ 音声認識が終了しました')
-          
+
           // 音声認識が終了した場合、文字起こしがある場合は処理（10文字以上の場合のみ）
           if (transcriptRef.current && transcriptRef.current.trim().length >= 10 && !processingRef.current) {
             // 少し待ってから処理（回答が続く可能性があるため）
@@ -553,7 +553,7 @@ export default function PublicInterviewPage() {
               if (processingRef.current || playingQuestion) {
                 return
               }
-              
+
               if (transcriptRef.current && transcriptRef.current.trim().length >= 10 && !processingRef.current) {
                 const responseText = transcriptRef.current.trim()
                 transcriptRef.current = ''
@@ -595,7 +595,7 @@ export default function PublicInterviewPage() {
             }
           }
         }
-        
+
         recognitionRef.current = recognition
       }
     }
@@ -604,23 +604,23 @@ export default function PublicInterviewPage() {
   // 導入メッセージを生成する関数
   const generateIntroductionMessage = (): string => {
     if (!interview) return ''
-    
+
     const parts: string[] = []
-    
+
     parts.push('本日はお時間をいただき、ありがとうございます。')
-    
+
     if (interview.interviewPurpose) {
       parts.push(`本日は、${interview.interviewPurpose}についてお話を伺いたいと思っています。`)
     }
-    
+
     if (interview.targetAudience) {
       parts.push(`${interview.targetAudience}の方々に向けて、`)
     }
-    
+
     if (interview.mediaType) {
       parts.push(`${interview.mediaType}に掲載予定です。`)
     }
-    
+
     if (interview.objective) {
       const objectives = interview.objective.split('\n').filter((line: string) => line.trim()).slice(0, 3) // 最初の3つまで
       if (objectives.length > 0) {
@@ -641,9 +641,9 @@ export default function PublicInterviewPage() {
         parts.push(...objectiveParts)
       }
     }
-    
+
     parts.push('それでは、よろしくお願いいたします。')
-    
+
     return parts.join(' ')
   }
 
@@ -653,19 +653,19 @@ export default function PublicInterviewPage() {
       console.warn('⚠️ インタビュアープロファイルが読み込まれていません')
       return
     }
-    
+
     const introductionText = generateIntroductionMessage()
-    
+
     if (!introductionText || !introductionText.trim()) {
       console.warn('⚠️ 導入メッセージが生成されませんでした')
       return
     }
-    
+
     console.log('🎤 導入メッセージを読み上げます:', introductionText.substring(0, 100) + '...')
-    
+
     try {
       setPlayingQuestion(true)
-      
+
       // Text-to-Speech APIを呼び出し
       const response = await fetch('/api/text-to-speech', {
         method: 'POST',
@@ -679,12 +679,23 @@ export default function PublicInterviewPage() {
 
       if (!response.ok) {
         const errorText = await response.text()
-        throw new Error(`音声生成に失敗しました: ${response.status}`)
+        let errorData
+        try {
+          errorData = JSON.parse(errorText)
+        } catch {
+          errorData = { error: errorText }
+        }
+        console.error('❌ 音声生成APIエラー (Public Introduction):', {
+          status: response.status,
+          error: errorData,
+        })
+        const diag = `${errorData.error || '不明なエラー'} (${errorData.details || '詳細なし'})`
+        throw new Error(`音声生成に失敗しました: ${response.status} - ${diag}`)
       }
 
       const audioBlob = await response.blob()
       const audioUrl = URL.createObjectURL(audioBlob)
-      
+
       // 音声を再生
       if (audioElementRef.current) {
         audioElementRef.current.pause()
@@ -692,7 +703,7 @@ export default function PublicInterviewPage() {
       }
       const audio = new Audio(audioUrl)
       audioElementRef.current = audio
-      
+
       await new Promise<void>((resolve, reject) => {
         audio.onended = () => {
           console.log('✅ 導入メッセージの読み上げ完了')
@@ -700,14 +711,14 @@ export default function PublicInterviewPage() {
           URL.revokeObjectURL(audioUrl)
           resolve()
         }
-        
+
         audio.onerror = (e) => {
           console.error('❌ 導入メッセージの音声再生エラー:', e)
           setPlayingQuestion(false)
           URL.revokeObjectURL(audioUrl)
           reject(new Error('音声の再生に失敗しました'))
         }
-        
+
         audio.play().catch(reject)
       })
     } catch (error) {
@@ -723,22 +734,22 @@ export default function PublicInterviewPage() {
       alert('⚠️ インタビュアープロファイルが読み込まれていません')
       return
     }
-    
+
     setIsRehearsalMode(true)
     setIsRehearsalActive(true)
     setIsPaused(false)
     setRehearsalMessages([])
     setCurrentTranscript('')
-    
+
     // 音声認識を初期化
     initializeSpeechRecognition()
-    
+
     // まず導入メッセージを読み上げ、その後最初の質問を生成して読み上げ
     setTimeout(async () => {
       try {
         // 導入メッセージを読み上げ
         await handlePlayIntroduction()
-        
+
         // 導入メッセージの後に少し待ってから最初の質問を生成して読み上げ
         setTimeout(async () => {
           try {
@@ -767,7 +778,7 @@ export default function PublicInterviewPage() {
   const handleStopRehearsal = () => {
     setIsPaused(true)
     setIsRehearsalActive(false)
-    
+
     // 音声認識を停止
     if (recognitionRef.current && isRecognitionActiveRef.current) {
       try {
@@ -777,13 +788,13 @@ export default function PublicInterviewPage() {
         console.error('音声認識の停止エラー:', e)
       }
     }
-    
+
     // 音声再生を停止
     if (audioElementRef.current) {
       audioElementRef.current.pause()
       audioElementRef.current = null
     }
-    
+
     setListening(false)
     setPlayingQuestion(false)
     setProcessing(false)
@@ -793,7 +804,7 @@ export default function PublicInterviewPage() {
   const handleResumeRehearsal = async () => {
     setIsPaused(false)
     setIsRehearsalActive(true)
-    
+
     // 音声認識を再開
     if (recognitionRef.current && !isRecognitionActiveRef.current) {
       try {
@@ -816,28 +827,28 @@ export default function PublicInterviewPage() {
   // 次の質問を生成して読み上げ
   const generateAndPlayNextQuestion = async () => {
     if (!interview || !interviewerProfile) return
-    
+
     try {
       setProcessing(true)
       setPlayingQuestion(true)
-      
+
       const conversationHistory = rehearsalMessages.map(msg => ({
         role: msg.role,
         content: msg.content
       }))
-      
+
       // 残りの質問リストを取得（会話履歴に基づいて使用済みの質問を除外）
       const usedQuestions = conversationHistory
         .filter(msg => msg.role === 'interviewer')
         .map(msg => msg.content)
       const remainingQuestions = questions.filter(q => !usedQuestions.includes(q))
-      
+
       console.log('📋 質問リスト:', {
         total: questions.length,
         used: usedQuestions.length,
         remaining: remainingQuestions.length
       })
-      
+
       const requestBody = {
         conversationHistory: conversationHistory,
         remainingQuestions: remainingQuestions, // 質問リストを渡す
@@ -856,13 +867,13 @@ export default function PublicInterviewPage() {
         confirmTitleAtInterview: interview.confirmTitleAtInterview,
         confirmDepartmentAtInterview: interview.confirmDepartmentAtInterview
       }
-      
+
       console.log('📤 質問生成APIを呼び出します:', {
         url: '/api/interview/generate-next-question',
         conversationHistoryLength: conversationHistory.length,
         remainingQuestionsLength: remainingQuestions.length
       })
-      
+
       const response = await fetch('/api/interview/generate-next-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -892,7 +903,7 @@ export default function PublicInterviewPage() {
         questionPreview: data.question?.substring(0, 100) || '',
         success: data.success
       })
-      
+
       if (!data.question || !data.question.trim()) {
         console.error('❌ 質問が生成されませんでした:', data)
         throw new Error('質問が生成されませんでした')
@@ -904,13 +915,13 @@ export default function PublicInterviewPage() {
         text: questionText,
         preview: questionText.substring(0, 100)
       })
-      
+
       // 質問をメッセージとして追加
       setRehearsalMessages(prev => [...prev, {
         role: 'interviewer',
         content: questionText
       }])
-      
+
       // 質問を音声で読み上げ
       console.log('🔊 音声生成APIを呼び出します:', {
         url: '/api/text-to-speech',
@@ -918,7 +929,7 @@ export default function PublicInterviewPage() {
         voiceType: interviewerProfile.voiceSettings?.voiceType || 'Puck',
         speed: interviewerProfile.voiceSettings?.speed || 1.0
       })
-      
+
       const audioResponse = await fetch('/api/text-to-speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -929,29 +940,30 @@ export default function PublicInterviewPage() {
         }),
       })
 
-      console.log('📥 音声生成APIのレスポンス:', {
-        status: audioResponse.status,
-        statusText: audioResponse.statusText,
-        ok: audioResponse.ok
-      })
-
       if (!audioResponse.ok) {
         const errorText = await audioResponse.text()
-        console.error('❌ 音声生成APIエラー:', {
+        let errorData
+        try {
+          errorData = JSON.parse(errorText)
+        } catch {
+          errorData = { error: errorText }
+        }
+        console.error('❌ 音声生成APIエラー (Public Question):', {
           status: audioResponse.status,
-          statusText: audioResponse.statusText,
-          errorText: errorText
+          error: errorData,
+          textLength: questionText.length,
         })
-        throw new Error(`音声生成に失敗しました: ${audioResponse.status} ${audioResponse.statusText}`)
+        const diag = `${errorData.error || '不明なエラー'} (${errorData.details || '詳細なし'})`
+        throw new Error(`音声生成に失敗しました: ${audioResponse.status} - ${diag}`)
       }
 
       const audioBlob = await audioResponse.blob()
       if (audioBlob.size === 0) {
         throw new Error('音声データが空です')
       }
-      
+
       const audioUrl = URL.createObjectURL(audioBlob)
-      
+
       // 音声を再生
       if (audioElementRef.current) {
         audioElementRef.current.pause()
@@ -959,16 +971,16 @@ export default function PublicInterviewPage() {
       }
       const audio = new Audio(audioUrl)
       audioElementRef.current = audio
-      
+
       // 質問の読み上げ開始時刻を記録
       questionPlaybackStartTimeRef.current = Date.now()
-      
+
       await new Promise<void>((resolve, reject) => {
         audio.onended = () => {
           console.log('✅ 質問の読み上げ完了')
           setPlayingQuestion(false)
           URL.revokeObjectURL(audioUrl)
-          
+
           // 質問読み上げ後、少し待ってから音声認識を開始（質問の音声が完全に終了するまで待つ）
           setTimeout(() => {
             // 質問の読み上げが完全に終了していることを確認
@@ -988,17 +1000,17 @@ export default function PublicInterviewPage() {
               }, 2000) // 追加で2秒待機
             }
           }, 6000) // 6秒待機（質問の音声が完全に終了するまで）
-          
+
           resolve()
         }
-        
+
         audio.onerror = (e) => {
           console.error('❌ 音声再生エラー:', e)
           setPlayingQuestion(false)
           URL.revokeObjectURL(audioUrl)
           reject(new Error('音声の再生に失敗しました'))
         }
-        
+
         audio.play().catch(reject)
       })
     } catch (error) {
@@ -1025,23 +1037,23 @@ export default function PublicInterviewPage() {
       console.log('⚠️ processRehearsalResponse: 処理中または文字起こしが空のためスキップ')
       return
     }
-    
+
     // 無音タイムアウトをクリア
     if (silenceTimeoutRef.current) {
       clearTimeout(silenceTimeoutRef.current)
       silenceTimeoutRef.current = null
     }
-    
+
     processingRef.current = true
     setProcessing(true)
     setListening(false)
     setCurrentTranscript('')
-    
+
     // 処理開始時に効果音を再生
     playKnockSound().catch((error) => {
       console.error('❌ 効果音の再生に失敗:', error)
     })
-    
+
     // 音声認識を停止
     if (recognitionRef.current && isRecognitionActiveRef.current) {
       try {
@@ -1052,9 +1064,9 @@ export default function PublicInterviewPage() {
         isRecognitionActiveRef.current = false
       }
     }
-    
+
     console.log('🔄 リハーサル回答を処理します:', transcript.substring(0, 50) + '...')
-    
+
     try {
       // 回答をメッセージとして追加
       const updatedRehearsalMessages = [...rehearsalMessages, {
@@ -1062,7 +1074,7 @@ export default function PublicInterviewPage() {
         content: transcript
       }]
       setRehearsalMessages(updatedRehearsalMessages)
-      
+
       // リハーサルメッセージを保存
       const firestoreDb = getFirebaseDb()
       const docRef = doc(firestoreDb, 'interviews', interviewId)
@@ -1070,7 +1082,7 @@ export default function PublicInterviewPage() {
         rehearsalMessages: updatedRehearsalMessages,
         updatedAt: serverTimestamp()
       })
-      
+
       // 次の質問を生成して読み上げ
       setTimeout(async () => {
         try {
@@ -1254,35 +1266,35 @@ export default function PublicInterviewPage() {
   // 進捗計算（聞きたいことが聞けているか、答えが得られているかを基準）
   const overallCompletionRate = progressEvaluation?.overallCompletionRate || 0
   const progressPercentage = overallCompletionRate
-  
+
   // 聞きたいことの項目数
-  const objectiveItems = interview?.objective 
+  const objectiveItems = interview?.objective
     ? interview.objective.split('\n')
-        .map((line: string) => line.trim())
-        .filter((line: string) => line.length > 0)
-        .map((line: string) => line.replace(/^[-*•]\s*/, '').trim())
-        .filter((line: string) => line.length > 0)
+      .map((line: string) => line.trim())
+      .filter((line: string) => line.length > 0)
+      .map((line: string) => line.replace(/^[-*•]\s*/, '').trim())
+      .filter((line: string) => line.length > 0)
     : []
-  
+
   const totalItems = objectiveItems.length || 1
-  const completedItems = progressEvaluation?.items 
+  const completedItems = progressEvaluation?.items
     ? progressEvaluation.items.filter((item: any) => item.status === 'complete').length
     : 0
   const partialItems = progressEvaluation?.items
     ? progressEvaluation.items.filter((item: any) => item.status === 'partial').length
     : 0
   const remainingItems = totalItems - completedItems - partialItems
-  
+
   // 残り時間の推定（達成率の進捗速度から計算）
   const calculateEstimatedTime = () => {
     if (!startTime || overallCompletionRate === 0 || overallCompletionRate >= 100) return null
-    
+
     const now = new Date()
     const elapsed = (now.getTime() - startTime.getTime()) / 1000 / 60 // 分
     const progressPerMinute = overallCompletionRate / elapsed // 1分あたりの達成率
     const remainingProgress = 100 - overallCompletionRate
     const estimatedRemainingMinutes = remainingProgress / progressPerMinute
-    
+
     if (estimatedRemainingMinutes < 1) {
       return 'あと数分'
     } else if (estimatedRemainingMinutes < 60) {
@@ -1293,15 +1305,15 @@ export default function PublicInterviewPage() {
       return `あと約${hours}時間${minutes > 0 ? `${minutes}分` : ''}`
     }
   }
-  
+
   const estimatedTime = calculateEstimatedTime()
-  
+
   // 表示するメッセージ（リハーサルモードの場合はリハーサルメッセージ、そうでない場合は通常メッセージ）
-  const displayMessages = isRehearsalMode && rehearsalMessages.length > 0 
+  const displayMessages = isRehearsalMode && rehearsalMessages.length > 0
     ? rehearsalMessages.map((msg, idx) => ({
-        ...msg,
-        timestamp: new Date(Date.now() - (rehearsalMessages.length - idx) * 1000)
-      }))
+      ...msg,
+      timestamp: new Date(Date.now() - (rehearsalMessages.length - idx) * 1000)
+    }))
     : messages
 
   return (
@@ -1318,7 +1330,7 @@ export default function PublicInterviewPage() {
               {interview.intervieweeCompany && ` (${interview.intervieweeCompany})`}
             </p>
           )}
-          
+
           {/* リハーサルモードコントロール */}
           {!isRehearsalMode && !interview.messages?.length && (
             <div className="mt-4 flex gap-2">
@@ -1333,7 +1345,7 @@ export default function PublicInterviewPage() {
               </Button>
             </div>
           )}
-          
+
           {isRehearsalMode && (
             <div className="mt-4 flex gap-2">
               {!isRehearsalActive ? (
@@ -1378,7 +1390,7 @@ export default function PublicInterviewPage() {
               )}
             </div>
           )}
-          
+
           {/* リハーサルモード表示 */}
           {isRehearsalMode && (
             <div className="mt-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
@@ -1390,7 +1402,7 @@ export default function PublicInterviewPage() {
               </p>
             </div>
           )}
-          
+
           {/* 進捗メーター */}
           {!isRehearsalMode && (
             <div className="mt-4 space-y-2">
@@ -1487,9 +1499,8 @@ export default function PublicInterviewPage() {
           {displayMessages.map((msg, index) => (
             <div
               key={index}
-              className={`flex gap-3 ${
-                msg.role === 'interviewer' ? 'justify-start' : 'justify-end'
-              }`}
+              className={`flex gap-3 ${msg.role === 'interviewer' ? 'justify-start' : 'justify-end'
+                }`}
             >
               {msg.role === 'interviewer' && interviewerProfile && (
                 <div className="flex-shrink-0">
@@ -1511,13 +1522,12 @@ export default function PublicInterviewPage() {
                   )}
                 </div>
               )}
-              
+
               <div
-                className={`max-w-[80%] rounded-lg px-4 py-3 ${
-                  msg.role === 'interviewer'
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-gray-900 dark:text-gray-100'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
-                }`}
+                className={`max-w-[80%] rounded-lg px-4 py-3 ${msg.role === 'interviewer'
+                  ? 'bg-blue-50 dark:bg-blue-900/20 text-gray-900 dark:text-gray-100'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                  }`}
               >
                 <p className="text-sm whitespace-pre-wrap break-words">
                   {msg.content}
@@ -1572,7 +1582,7 @@ export default function PublicInterviewPage() {
               </div>
             </div>
           )}
-          
+
           <div ref={messagesEndRef} />
         </div>
       </div>
