@@ -72,13 +72,19 @@ jobs:
             --allow-unauthenticated \
             --set-env-vars="GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},FIREBASE_CLIENT_EMAIL=${{ secrets.FIREBASE_CLIENT_EMAIL }},FIREBASE_PRIVATE_KEY=${{ secrets.FIREBASE_PRIVATE_KEY }},FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}"
 
+      - name: Deploy to Firebase Hosting
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only hosting
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
       - name: Get service URL
         id: get-url
         run: |
-          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format 'value(status.url)')
-          echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "url=https://bankisha-654d0.web.app" >> $GITHUB_OUTPUT
           echo "✅ デプロイ完了！"
-          echo "🌐 サービスURL: $SERVICE_URL"
+          echo "🌐 Firebase Hosting URL: https://bankisha-654d0.web.app"
 
       - name: Output deployment URL
         run: |
