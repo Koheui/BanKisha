@@ -188,9 +188,8 @@ JSON形式で以下のキーを含めてください：
       console.warn('Could not preview AI response:', e)
     }
 
-    // JSON抽出（まずは ```json コードブロックを優先）
-    const codeBlockMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/i)
-    const jsonMatch = codeBlockMatch ? codeBlockMatch[1] : responseText.match(/\{[\s\S]*\}/)
+    // JSON抽出（プレーンなJSONオブジェクトを抽出）
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
 
     if (!jsonMatch) {
       // 再試行: モデルに「純粋なJSONのみ」を明示的に要求
@@ -200,13 +199,12 @@ JSON形式で以下のキーを含めてください：
         const retryResult = await model.generateContent([retryPrompt])
         const retryText = retryResult.response.text()
         console.log('🧾 Retry AI response preview:', retryText.substring(0, 1000))
-        const retryCodeBlock = retryText.match(/```json\s*([\s\S]*?)\s*```/i)
-        const retryJsonMatch = retryCodeBlock ? retryCodeBlock[1] : retryText.match(/\{[\s\S]*\}/)
+        const retryJsonMatch = retryText.match(/\{[\s\S]*\}/)
         if (!retryJsonMatch) {
           console.error('❌ Retry also failed to return JSON. Full response (truncated 8k):', retryText.substring(0, 8000))
           throw new Error('Invalid AI response format after retry')
         }
-        const parsedRetry = JSON.parse(retryJsonMatch[0] || retryJsonMatch)
+        const parsedRetry = JSON.parse(retryJsonMatch[0])
         return NextResponse.json({
           ...parsedRetry,
           success: true,
