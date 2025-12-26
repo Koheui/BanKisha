@@ -195,7 +195,7 @@ JSON形式で以下のキーを含めてください：
       // 再試行: モデルに「純粋なJSONのみ」を明示的に要求
       console.warn('⚠️ AI did not return JSON. Attempting a strict retry...')
       try {
-        const retryPrompt = 'このリクエストでは「純粋なJSONのみ」を返してください。余計な説明やテキストを一切付けず、エスケープせずにJSONオブジェクトをそのまま返してください。出力例: {"questions":["質問1"],"openingMessage":"...","explanation":"..."}'}
+        const retryPrompt = 'このリクエストでは「純粋なJSONのみ」を返してください。余計な説明やテキストを一切付けず、エスケープせずにJSONオブジェクトをそのまま返してください。出力例: {"questions":["質問1"],"openingMessage":"...","explanation":"..."}'
         const retryResult = await model.generateContent([retryPrompt])
         const retryText = retryResult.response.text()
         console.log('🧾 Retry AI response preview:', retryText.substring(0, 1000))
