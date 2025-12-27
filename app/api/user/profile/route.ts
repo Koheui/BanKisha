@@ -1,6 +1,41 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { updateUser } from '@/src/lib/firestore'
+import * as admin from 'firebase-admin'
+import { initializeFirebaseAdmin } from '@/src/lib/firebase-admin'
+
+export async function GET() {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return new NextResponse('Unauthorized', { status: 401 })
+    }
+
+    await initializeFirebaseAdmin()
+    const db = admin.firestore()
+    const userDoc = await db.collection('users').doc(userId).get()
+
+    if (!userDoc.exists) {
+      // ユーザーが存在しない場合は基本情報を返す（新規登録直後の状態）
+      return NextResponse.json({
+        uid: userId,
+        role: 'user'
+      })
+    }
+
+    const userData = userDoc.data()
+    return NextResponse.json({
+      uid: userId,
+      ...userData,
+      // TimestampをISO文字列に変換（クライアントに送るため）
+      createdAt: userData?.createdAt?.toDate ? userData.createdAt.toDate().toISOString() : userData?.createdAt,
+      updatedAt: userData?.updatedAt?.toDate ? userData.updatedAt.toDate().toISOString() : userData?.updatedAt,
+    })
+  } catch (error) {
+    console.error('Error fetching profile:', error)
+    return new NextResponse('Internal Server Error', { status: 500 })
+  }
+}
 
 export async function POST(request: Request) {
   try {
