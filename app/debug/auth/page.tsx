@@ -114,14 +114,28 @@ export default function AuthDebugPage() {
                                 {envHasKey ? <ShieldCheck className="text-green-600" /> : <ShieldAlert className="text-red-600" />}
                                 <div>
                                     <p className="font-semibold">Vercel 環境変数 (FIREBASE_PRIVATE_KEY)</p>
-                                    <p className="text-sm text-gray-500">{envHasKey ? "設定されています" : "❌ 未設定または空（致命的）"}</p>
+                                    <p className="text-sm text-gray-500">{envHasKey ? "設定されています" : "❌ 未設定または空"}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {apiData?._debug?.envHasEmail ? <ShieldCheck className="text-green-600" /> : <ShieldAlert className="text-red-600" />}
+                                <div>
+                                    <p className="font-semibold">Vercel 環境変数 (FIREBASE_CLIENT_EMAIL)</p>
+                                    <p className="text-sm text-gray-500">{apiData?._debug?.envHasEmail ? "設定されています" : "❌ 未設定または空"}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
                                 {apiData?._debug?.projectId !== 'undefined' ? <ShieldCheck className="text-green-600" /> : <ShieldAlert className="text-red-600" />}
                                 <div>
-                                    <p className="font-semibold">Firebase Project ID</p>
+                                    <p className="font-semibold">Firebase Project ID (Public)</p>
                                     <code className="text-sm text-gray-500">{apiData?._debug?.projectId}</code>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {apiData?._debug?.envProjectId !== 'undefined' ? <ShieldCheck className="text-green-600" /> : <ShieldAlert className="text-red-600" />}
+                                <div>
+                                    <p className="font-semibold">Firebase Project ID (Server)</p>
+                                    <code className="text-sm text-gray-500">{apiData?._debug?.envProjectId}</code>
                                 </div>
                             </div>
                         </div>

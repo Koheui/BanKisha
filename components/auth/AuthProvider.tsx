@@ -56,7 +56,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           customGenres: userData.customGenres || []
         })
       } else {
-        console.warn('⚠️ Failed to fetch user profile, falling back to basic info')
+        const errorData = await response.json().catch(() => ({}))
+        console.warn('⚠️ Failed to fetch user profile:', {
+          status: response.status,
+          message: errorData.message || 'Unknown error',
+          code: errorData.code
+        })
         setUser({
           uid: clerkUser.id,
           email: clerkUser.primaryEmailAddress?.emailAddress || null,

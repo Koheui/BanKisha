@@ -27,6 +27,8 @@ export async function GET() {
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'undefined',
       exists: userDoc.exists,
       envHasKey: !!process.env.FIREBASE_PRIVATE_KEY,
+      envHasEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+      envProjectId: process.env.FIREBASE_PROJECT_ID || 'undefined',
     }
 
     if (!userDoc.exists) {
