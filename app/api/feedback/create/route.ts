@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { getFirebaseDb } from '@/src/lib/firebase'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import type { Feedback, FeedbackType, FeedbackSource } from '@/src/types/feedback'
 
 export async function POST(request: NextRequest) {
   try {
-    // 実行時に確実に初期化される
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+    }
+
     const firestoreDb = getFirebaseDb()
     const {
       companyId,
@@ -38,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     const docRef = await addDoc(collection(firestoreDb, 'feedbacks'), {
       ...feedbackData,
-      createdBy,
+      createdBy: userId, // Use authenticated userId
       createdAt: serverTimestamp(),
     })
 
@@ -54,5 +59,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
-

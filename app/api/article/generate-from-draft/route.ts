@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { auth } from '@clerk/nextjs/server'
 import * as admin from 'firebase-admin'
 import { initializeFirebaseAdmin } from '@/src/lib/firebase-admin'
 
@@ -8,6 +9,12 @@ export async function POST(request: NextRequest) {
   try {
     await initializeFirebaseAdmin()
     const adminDb = admin.firestore()
+
+    // 認証チェック
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+    }
 
     const body = await request.json()
     const {
