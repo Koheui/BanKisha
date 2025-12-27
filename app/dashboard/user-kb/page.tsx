@@ -52,28 +52,17 @@ export default function UserKBPage() {
 
         try {
             setLoadingData(true)
-            const firestoreDb = getFirebaseDb()
-            const kbRef = collection(firestoreDb, 'knowledgeBases')
+            const response = await fetch('/api/knowledge-base/list?type=user')
+            if (!response.ok) throw new Error('読み込みに失敗しました')
+            const kbs = await response.json()
 
-            // ユーザー別（uploadedBy）に取得
-            const q = query(
-                kbRef,
-                where('type', '==', 'user'),
-                where('uploadedBy', '==', user.uid),
-                orderBy('createdAt', 'desc')
-            )
+            const formattedKbs = kbs.map((kb: any) => ({
+                ...kb,
+                createdAt: new Date(kb.createdAt),
+                updatedAt: new Date(kb.updatedAt)
+            }))
 
-            const snapshot = await getDocs(q)
-            const kbs = snapshot.docs
-                .map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    createdAt: doc.data().createdAt?.toDate() || new Date(),
-                    updatedAt: doc.data().updatedAt?.toDate() || new Date()
-                } as KnowledgeBase))
-                .filter(kb => !kb.deleted)
-
-            setKnowledgeBases(kbs)
+            setKnowledgeBases(formattedKbs)
         } catch (error) {
             console.error('Error loading user knowledge bases:', error)
         } finally {

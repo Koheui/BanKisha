@@ -64,23 +64,18 @@ export default function SkillKBPage() {
   const loadKnowledgeBases = async () => {
     try {
       setLoadingData(true)
-      const firestoreDb = getFirebaseDb()
-      const kbRef = collection(firestoreDb, 'knowledgeBases')
-      const q = query(
-        kbRef,
-        where('type', '==', 'skill'),
-        orderBy('createdAt', 'desc')
-      )
-      const snapshot = await getDocs(q)
-      const kbs = snapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date(),
-          updatedAt: doc.data().updatedAt?.toDate() || new Date()
-        } as KnowledgeBase))
-        .filter(kb => !kb.deleted) // クライアント側で削除されていないものをフィルタ
-      setKnowledgeBases(kbs)
+      const response = await fetch('/api/knowledge-base/list?type=skill')
+      if (!response.ok) throw new Error('読み込みに失敗しました')
+      const kbs = await response.json()
+
+      // Convert date strings back to Date objects if needed by the UI
+      const formattedKbs = kbs.map((kb: any) => ({
+        ...kb,
+        createdAt: new Date(kb.createdAt),
+        updatedAt: new Date(kb.updatedAt)
+      }))
+
+      setKnowledgeBases(formattedKbs)
     } catch (error) {
       console.error('Error loading knowledge bases:', error)
       alert('❌ ナレッジベースの読み込みに失敗しました')
@@ -102,8 +97,6 @@ export default function SkillKBPage() {
       alert('❌ PDFファイルのみアップロード可能です')
       return
     }
-
-    // ファイルサイズ制限なし
 
     try {
       setUploading(true)
@@ -181,12 +174,6 @@ export default function SkillKBPage() {
             }
           } catch (error: any) {
             console.error('❌ [Upload] Fatal error:', error)
-            console.error('Error details:', {
-              code: error.code,
-              message: error.message,
-              stack: error.stack,
-              name: error.name
-            })
             throw error
           }
         }
@@ -194,6 +181,7 @@ export default function SkillKBPage() {
     } catch (error: any) {
       console.error('Error uploading PDF:', error)
       alert(`❌ アップロードに失敗しました: ${error.message}`)
+    } finally {
       setUploading(false)
       setUploadProgress(0)
     }
@@ -205,13 +193,22 @@ export default function SkillKBPage() {
     }
 
     try {
-      // ソフトデリート（論理削除）
-      const firestoreDb = getFirebaseDb()
-      const kbRef = doc(firestoreDb, 'knowledgeBases', kb.id)
-      await updateDoc(kbRef, {
-        deleted: true,
-        deletedAt: new Date()
+      // ソフトデリート。本来はAPI化すべきだが、既存のupdateDocがある。
+      // 一旦、既存のAPIがあればそれを使うか、最小限の修正で済ませる。
+      // ナレッジベースの更新（活用方法変更）もAPI化した方が安全。
+      const response = await fetch(`/api/knowledge-base/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          knowledgeBaseId: kb.id,
+          updateData: {
+            deleted: true,
+            deletedAt: new Date().toISOString()
+          }
+        })
       })
+
+      if (!response.ok) throw new Error('削除に失敗しました')
 
       alert('✅ ゴミ箱に移動しました')
       await loadKnowledgeBases()
@@ -227,9 +224,6 @@ export default function SkillKBPage() {
     checked: boolean
   ) => {
     try {
-      const firestoreDb = getFirebaseDb()
-      const kbRef = doc(firestoreDb, 'knowledgeBases', kbId)
-
       const updateData: any = {}
       if (scenario === 'dialogue') {
         updateData.useForDialogue = checked
@@ -239,10 +233,16 @@ export default function SkillKBPage() {
         updateData.useForSummary = checked
       }
 
-      await updateDoc(kbRef, {
-        ...updateData,
-        updatedAt: serverTimestamp()
+      const response = await fetch(`/api/knowledge-base/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          knowledgeBaseId: kbId,
+          updateData
+        })
       })
+
+      if (!response.ok) throw new Error('更新に失敗しました')
 
       // ローカル状態を更新
       setKnowledgeBases(prev =>

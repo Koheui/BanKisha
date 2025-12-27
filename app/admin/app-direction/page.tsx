@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { getFirebaseDb } from '@/src/lib/firebase'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import Link from 'next/link'
 import { ArrowLeftIcon, CompassIcon, SaveIcon } from 'lucide-react'
 
@@ -27,14 +25,10 @@ export default function AppDirectionPage() {
   useEffect(() => {
     const loadDirectionPrompt = async () => {
       try {
-        const firestoreDb = getFirebaseDb()
-        const settingsRef = doc(firestoreDb, 'systemSettings', 'appDirection')
-        const settingsDoc = await getDoc(settingsRef)
-
-        if (settingsDoc.exists()) {
-          const data = settingsDoc.data()
-          setDirectionPrompt(data.directionPrompt || '')
-        }
+        const response = await fetch('/api/admin/system-settings?key=appDirection')
+        if (!response.ok) throw new Error('読み込みに失敗しました')
+        const data = await response.json()
+        setDirectionPrompt(data.directionPrompt || '')
       } catch (error) {
         console.error('Error loading app direction:', error)
       } finally {
@@ -54,13 +48,19 @@ export default function AppDirectionPage() {
         throw new Error('ログインが必要です')
       }
 
-      const firestoreDb = getFirebaseDb()
-      const settingsRef = doc(firestoreDb, 'systemSettings', 'appDirection')
-      await setDoc(settingsRef, {
-        directionPrompt: directionPrompt.trim(),
-        updatedAt: serverTimestamp(),
-        updatedBy: user.uid
-      }, { merge: true })
+      const response = await fetch('/api/admin/system-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: 'appDirection',
+          data: { directionPrompt: directionPrompt.trim() }
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || '保存に失敗しました')
+      }
 
       alert('✅ 保存しました')
     } catch (error: any) {
@@ -208,4 +208,3 @@ export default function AppDirectionPage() {
     </div>
   )
 }
-
