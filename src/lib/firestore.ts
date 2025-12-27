@@ -14,7 +14,7 @@ import {
   Timestamp,
   QueryConstraint
 } from 'firebase/firestore'
-import type { Article, Company, KnowledgeBase } from '../types'
+import type { Article, Company, KnowledgeBase, User, Comment } from '../types'
 
 // Companies
 export async function initializeCompany(name: string, userId: string): Promise<string> {
@@ -35,7 +35,17 @@ export async function initializeCompany(name: string, userId: string): Promise<s
 }
 
 // Articles
-export async function getArticles(status?: string, companyId?: string, category?: string): Promise<Article[]> {
+interface GetArticlesOptions {
+  status?: string;
+  companyId?: string;
+  category?: string;
+  featured?: boolean;
+  limit?: number;
+}
+
+export async function getArticles(options: string | GetArticlesOptions = {}): Promise<Article[]> {
+  const opts = typeof options === 'string' ? { status: options } : options;
+  const { status, companyId, category, featured, limit: queryLimit } = opts;
   try {
     const articlesRef = collection(getFirebaseDb(), 'articles')
     const constraints: QueryConstraint[] = []
@@ -43,16 +53,21 @@ export async function getArticles(status?: string, companyId?: string, category?
     if (status) {
       constraints.push(where('status', '==', status))
     }
-
     if (companyId) {
       constraints.push(where('companyId', '==', companyId))
     }
-
     if (category) {
       constraints.push(where('category', '==', category))
     }
+    if (featured) {
+      constraints.push(where('featured', '==', true))
+    }
 
-    constraints.push(orderBy('createdAt', 'desc'))
+    constraints.push(orderBy('publishedAt', 'desc'))
+
+    if (queryLimit) {
+      constraints.push(limit(queryLimit))
+    }
 
     const q = query(articlesRef, ...constraints)
     const snapshot = await getDocs(q)
@@ -175,6 +190,36 @@ export async function getCompany(id: string): Promise<Company | null> {
   }
 }
 
+export async function getUser(id: string): Promise<User | null> {
+  try {
+    const docRef = doc(getFirebaseDb(), 'users', id)
+    const docSnap = await getDoc(docRef)
+
+    if (!docSnap.exists()) {
+      return null
+    }
+
+    return {
+      id: docSnap.id,
+      ...docSnap.data(),
+      createdAt: docSnap.data().createdAt?.toDate() || new Date()
+    } as User
+  } catch (error) {
+    console.error('Error getting user:', error)
+    throw error
+  }
+}
+
+export async function updateUser(id: string, data: Partial<User>): Promise<void> {
+  try {
+    const docRef = doc(getFirebaseDb(), 'users', id)
+    await updateDoc(docRef, data)
+  } catch (error) {
+    console.error('Error updating user:', error)
+    throw error
+  }
+}
+
 // Knowledge Bases
 export async function getKnowledgeBases(type?: 'skill' | 'info' | 'user', companyId?: string): Promise<KnowledgeBase[]> {
   // クライアント側でのskill/info取得を禁止（機密保護）
@@ -281,6 +326,41 @@ export async function migrateInterviewMessages(interviewId: string): Promise<{ s
     return { success: true, migratedCount }
   } catch (error) {
     console.error('Error migrating messages:', error)
+    throw error
+  }
+}
+
+// Comments
+export async function getCommentsForArticle(articleId: string): Promise<Comment[]> {
+  try {
+    const commentsRef = collection(getFirebaseDb(), 'comments')
+    const q = query(
+      commentsRef,
+      where('articleId', '==', articleId),
+      orderBy('createdAt', 'asc')
+    )
+    const snapshot = await getDocs(q)
+
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+    })) as Comment[]
+  } catch (error) {
+    console.error('Error getting comments:', error)
+    throw error
+  }
+}
+
+export async function addComment(comment: Omit<Comment, 'id' | 'createdAt'>): Promise<string> {
+  try {
+    const docRef = await addDoc(collection(getFirebaseDb(), 'comments'), {
+      ...comment,
+      createdAt: Timestamp.now()
+    })
+    return docRef.id
+  } catch (error) {
+    console.error('Error adding comment:', error)
     throw error
   }
 }

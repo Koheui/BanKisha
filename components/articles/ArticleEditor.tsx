@@ -518,7 +518,7 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
           </div>
         </div>
 
-        {/* 会社・サービス概要カード */}
+        {/* 会社・サービス概要カード (Edit trigger) */}
         <Card className="mb-6 border-blue-100 dark:border-blue-900/30 bg-blue-50/20 dark:bg-blue-900/5">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">

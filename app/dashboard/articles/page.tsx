@@ -52,7 +52,7 @@ export default function ArticlesPage() {
     try {
       setLoading(true)
       // user.companyIdを渡して、特定の会社の記事のみを取得
-      const articlesList = await getArticles(undefined, user?.companyId)
+      const articlesList = await getArticles({ companyId: user?.companyId })
       setArticles(articlesList)
     } catch (error) {
       console.error('Error loading articles:', error)

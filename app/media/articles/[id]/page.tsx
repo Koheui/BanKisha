@@ -3,8 +3,10 @@ import { ArticleView } from '@/components/media/ArticleView'
 import { Card, CardContent } from '@/components/ui/card'
 import { LoaderIcon } from 'lucide-react'
 import { Metadata } from 'next'
-import { getArticle, getCompany } from '@/src/lib/firestore'
+import { getArticle, getCompany, getUser } from '@/src/lib/firestore'
 import { notFound } from 'next/navigation'
+
+export const dynamic = 'force-dynamic'
 
 interface ArticlePageProps {
   params: Promise<{
@@ -59,6 +61,9 @@ export default async function MediaArticlePage({ params }: ArticlePageProps) {
     notFound()
   }
 
+  const company = article.companyId ? await getCompany(article.companyId) : null
+  const author = article.ownerUserId ? await getUser(article.ownerUserId) : null
+
   const coverImageUrl = article.coverImageUrl ||
     article.publicMeta?.coverImageUrl ||
     (article.images?.find(img => img.position === -1)?.url)
@@ -66,8 +71,6 @@ export default async function MediaArticlePage({ params }: ArticlePageProps) {
   const publishedAt = article.publishedAt ||
     article.publicMeta?.publishedAt ||
     article.createdAt
-
-  const companyName = article.companyId ? (await getCompany(article.companyId))?.name : 'BanKisha'
 
   // 構造化データ（JSON-LD）
   const structuredData = {
@@ -80,11 +83,11 @@ export default async function MediaArticlePage({ params }: ArticlePageProps) {
     dateModified: article.updatedAt?.toISOString(),
     author: {
       '@type': 'Organization',
-      name: companyName,
+      name: company?.name || 'BanKisha',
     },
     publisher: {
       '@type': 'Organization',
-      name: companyName,
+      name: company?.name || 'BanKisha',
     },
   }
 
@@ -104,7 +107,7 @@ export default async function MediaArticlePage({ params }: ArticlePageProps) {
           </Card>
         }
       >
-        <ArticleView articleId={id} />
+        <ArticleView article={article} company={company} author={author} />
       </Suspense>
     </div>
   )

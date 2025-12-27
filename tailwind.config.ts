@@ -17,14 +17,24 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: {
+        "display": ['"Newsreader"', '"Noto Sans JP"', "serif"],
+        "sans": ['"Noto Sans JP"', "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        "background-light": "#f6f6f8",
+        "background-dark": "#101622",
+        "text-dark": "#111318",
+        "text-light": "#e0e2e6",
+        "muted-light": "#616f89",
+        "muted-dark": "#9aa2b1",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
+          DEFAULT: "#135bec",
           foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {

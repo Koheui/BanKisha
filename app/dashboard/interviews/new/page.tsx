@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { getFirebaseDb, getFirebaseAuth } from '@/src/lib/firebase'
 import { collection, addDoc, updateDoc, serverTimestamp, query, where, getDocs, orderBy, doc, getDoc, setDoc } from 'firebase/firestore'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowLeftIcon, MicIcon, SparklesIcon, UserIcon, BuildingIcon, UsersIcon, LoaderIcon, RefreshCwIcon, CheckCircleIcon, ChevronUpIcon, ChevronDownIcon, PlusIcon, XIcon, GripVerticalIcon, LayoutIcon, TargetIcon, GlobeIcon, FileTextIcon, InfoIcon, MessageSquareIcon, ChevronRightIcon, ChevronLeftIcon } from 'lucide-react'
+import { ArrowLeftIcon, MicIcon, SparklesIcon, UserIcon, BuildingIcon, UsersIcon, LoaderIcon, RefreshCwIcon, CheckCircleIcon, ChevronUpIcon, ChevronDownIcon, PlusIcon, XIcon, GripVerticalIcon, LayoutIcon, TargetIcon, GlobeIcon, FileTextIcon, InfoIcon, MessageSquareIcon, ChevronRightIcon, ChevronLeftIcon, SaveIcon, Volume2Icon, VolumeXIcon } from 'lucide-react'
 import Link from 'next/link'
 import { InterviewerProfile, KnowledgeBase } from '@/src/types/index'
 // スキルナレッジベースはサーバー側で自動取得されるため、インポート不要
@@ -119,6 +119,7 @@ function NewInterviewPageContent() {
 それではさっそくインタビューに入らせていただきます.`)
   const [showOpeningTemplateEditor, setShowOpeningTemplateEditor] = useState(false)
   const [companyName, setCompanyName] = useState<string>('') // 会社名
+  const [mediaName, setMediaName] = useState<string>('') // メディア名（表示名）
   const [loadingQuestions, setLoadingQuestions] = useState(false)
   const [selectedInterviewer, setSelectedInterviewer] = useState<InterviewerProfile | null>(null)
   const [questionCount, setQuestionCount] = useState<number>(10) // 質問数のデフォルト値
@@ -127,6 +128,9 @@ function NewInterviewPageContent() {
   const [availableKBs, setAvailableKBs] = useState<KnowledgeBase[]>([])
   const [selectedKBIds, setSelectedKBIds] = useState<string[]>([])
   const [loadingKBs, setLoadingKBs] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (user?.companyId) {
@@ -142,6 +146,10 @@ function NewInterviewPageContent() {
       const company = await getCompany(user.companyId)
       if (company) {
         setCompanyName(company.name)
+        // メディア名が未設定なら会社名を初期値にする
+        if (!mediaName) {
+          setMediaName(company.name)
+        }
       }
     } catch (error) {
       console.error('Error loading company name:', error)
@@ -250,6 +258,7 @@ function NewInterviewPageContent() {
           setCategory(data.category || '')
           setCustomCategory('')
         }
+        setMediaName(data.mediaName || data.companyName || '')
         setTargetAudience(data.targetAudience || '')
         setMediaType(data.mediaType || '')
         setInterviewPurpose(data.interviewPurpose || '')
@@ -410,6 +419,98 @@ function NewInterviewPageContent() {
     }
   }
 
+  // 読み上げ機能（プレミアムTTS）
+  const handleReadAloud = async () => {
+    if (!openingMessage) return
+
+    // もし既に読み上げ中なら停止
+    if (isSpeaking) {
+      handleStopReadAloud()
+      return
+    }
+
+    try {
+      setIsSpeaking(true)
+
+      // インタビュアーを取得
+      const currentInterviewer = interviewers.find(i => i.id === selectedInterviewerId)
+      // 音声設定を取得
+      const voiceType = (currentInterviewer as any)?.voiceSettings?.voiceType || 'Puck'
+      const speed = (currentInterviewer as any)?.voiceSettings?.speed || (currentInterviewer as any)?.speakingRate || 1.1
+
+      console.log('🎤 Calling TTS API with:', { voiceType, speed })
+
+      const response = await fetch('/api/text-to-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: openingMessage,
+          voiceType: voiceType,
+          speed: speed,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('音声生成に失敗しました')
+      }
+
+      const audioBlob = await response.blob()
+      const audioUrl = URL.createObjectURL(audioBlob)
+      audioUrlRef.current = audioUrl
+
+      const audio = new Audio(audioUrl)
+      audioRef.current = audio
+
+      audio.onended = () => {
+        setIsSpeaking(false)
+        if (audioUrlRef.current) {
+          URL.revokeObjectURL(audioUrlRef.current)
+          audioUrlRef.current = null
+        }
+      }
+
+      audio.onerror = () => {
+        setIsSpeaking(false)
+        if (audioUrlRef.current) {
+          URL.revokeObjectURL(audioUrlRef.current)
+          audioUrlRef.current = null
+        }
+      }
+
+      await audio.play()
+    } catch (error) {
+      console.error('Error in handleReadAloud:', error)
+      setIsSpeaking(false)
+      alert('❌ 音声の再生に失敗しました')
+    }
+  }
+
+
+  // 停止機能
+  const handleStopReadAloud = () => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current)
+      audioUrlRef.current = null
+    }
+    setIsSpeaking(false)
+  }
+
+  // コンポーネントのクリーンアップ時に音声を停止
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+      }
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current)
+      }
+    }
+  }, [])
+
   // 保存のみを行う関数（質問生成前）
   const handleSave = async () => {
     // 最低限の必須項目のみチェック
@@ -462,6 +563,7 @@ function NewInterviewPageContent() {
         category: category === 'custom' ? customCategory : category,
         targetAudience: targetAudience.trim(),
         mediaType: mediaType.trim(),
+        mediaName: mediaName.trim(),
         interviewPurpose: interviewPurpose.trim(),
         interviewSource: interviewSource,
         supplementaryInfo: supplementaryInfo.trim(),
@@ -575,6 +677,7 @@ function NewInterviewPageContent() {
         category: category === 'custom' ? customCategory : category,
         targetAudience: targetAudience.trim(),
         mediaType: mediaType.trim(),
+        mediaName: mediaName.trim(),
         interviewPurpose: interviewPurpose.trim(),
         interviewSource: interviewSource,
         supplementaryInfo: supplementaryInfo.trim(),
@@ -632,6 +735,14 @@ function NewInterviewPageContent() {
     } finally {
       setCreating(false)
     }
+  }
+
+  const handleSkipIntervieweeInfo = () => {
+    setConfirmNameAtInterview(true)
+    setConfirmCompanyAtInterview(true)
+    setConfirmDepartmentAtInterview(true)
+    setConfirmTitleAtInterview(true)
+    setCurrentStep(4)
   }
 
   return (
@@ -993,23 +1104,33 @@ function NewInterviewPageContent() {
                       </div>
                     </div>
 
-                    <div className="pt-4 flex items-center justify-between">
+                    <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                       <Button
                         variant="ghost"
                         onClick={() => setCurrentStep(2)}
-                        className="text-gray-600 dark:text-gray-400"
+                        className="text-gray-600 dark:text-gray-400 w-full sm:w-auto"
                       >
                         <ChevronLeftIcon className="w-4 h-4 mr-2" />
                         戻る
                       </Button>
-                      <Button
-                        onClick={() => setCurrentStep(4)}
-                        disabled={!confirmNameAtInterview && !intervieweeName.trim()}
-                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8"
-                      >
-                        次へ：具体的な質問内容
-                        <ChevronRightIcon className="w-4 h-4 ml-2" />
-                      </Button>
+
+                      <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                        <Button
+                          variant="outline"
+                          onClick={handleSkipIntervieweeInfo}
+                          className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 w-full sm:w-auto"
+                        >
+                          あとで入力する
+                        </Button>
+                        <Button
+                          onClick={() => setCurrentStep(4)}
+                          disabled={!confirmNameAtInterview && !intervieweeName.trim()}
+                          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 w-full sm:w-auto"
+                        >
+                          次へ：具体的な質問内容
+                          <ChevronRightIcon className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1229,7 +1350,7 @@ function NewInterviewPageContent() {
                         <div className="bg-white dark:bg-gray-800 p-3 rounded-md text-sm whitespace-pre-wrap border">
                           {openingTemplate
                             .replace(/\[アカウント名\]/g, user?.companyId ? (user?.companyId) : 'BanKisha')
-                            .replace(/\[インタビュアー名\]/g, interviewers.find(i=>i.id===selectedInterviewerId)?.name || '')
+                            .replace(/\[インタビュアー名\]/g, interviewers.find(i => i.id === selectedInterviewerId)?.name || '')
                             .replace(/\[インタビュー名\]/g, title || '')
                             .replace(/\[ターゲット\]/g, targetAudience || '')
                             .replace(/\[目的\]/g, interviewPurpose || '')
@@ -1305,36 +1426,77 @@ function NewInterviewPageContent() {
                         <InfoIcon className="w-3.5 h-3.5" />
                         生成の前提条件（オープニング構成）
                       </h4>
-                      <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                        <p className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-24 shrink-0">挨拶:</span>
-                          本日はお忙しい中ご対応いただきありがとうございます。
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-24 shrink-0">自己紹介:</span>
-                          <span className="bg-indigo-50 dark:bg-indigo-900/30 px-1 rounded text-indigo-700 dark:text-indigo-300 font-medium">{companyName || 'BanKisha'}</span> の
-                          <span className="bg-indigo-50 dark:bg-indigo-900/30 px-1 rounded text-indigo-700 dark:text-indigo-300 font-medium">{selectedInterviewer?.name || '担当者'}</span> と申します。
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-24 shrink-0">インタビュー名:</span>
-                          今回は <span className="bg-pink-50 dark:bg-pink-900/30 px-1 rounded text-pink-700 dark:text-pink-300 font-medium">{title || '（未入力）'}</span> ということで、
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-24 shrink-0">ターゲット:</span>
-                          <span className="bg-blue-50 dark:bg-blue-900/30 px-1 rounded text-blue-700 dark:text-blue-300 font-medium">{targetAudience || '（未入力）'}</span> のかたに向けて、
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-24 shrink-0">目的:</span>
-                          <span className="bg-purple-50 dark:bg-purple-900/30 px-1 rounded text-purple-700 dark:text-purple-300 font-medium">{interviewPurpose || '（未入力）'}</span> と考えておりまして、
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-24 shrink-0">媒体:</span>
-                          <span className="bg-green-50 dark:bg-green-900/30 px-1 rounded text-green-700 dark:text-green-300 font-medium">{mediaType || '（未入力）'}</span> に掲載予定です。
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-24 shrink-0">締めの言葉:</span>
-                          それではさっそくインタビューに入らせていただきます。
-                        </p>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase flex items-center gap-1.5">
+                              <BuildingIcon className="w-3 h-3" />
+                              表示名 (メディア名等)
+                            </label>
+                            <input
+                              type="text"
+                              value={mediaName}
+                              onChange={(e) => setMediaName(e.target.value)}
+                              className="w-full px-3 py-1.5 text-sm bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-lg focus:ring-1 focus:ring-indigo-400 outline-none text-indigo-700 dark:text-indigo-300 font-medium"
+                              placeholder="表示名を入力..."
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase flex items-center gap-1.5">
+                              <FileTextIcon className="w-3 h-3" />
+                              インタビュー名
+                            </label>
+                            <input
+                              type="text"
+                              value={title}
+                              onChange={(e) => setTitle(e.target.value)}
+                              className="w-full px-3 py-1.5 text-sm bg-pink-50/50 dark:bg-pink-900/20 border border-pink-100 dark:border-pink-800 rounded-lg focus:ring-1 focus:ring-pink-400 outline-none text-pink-700 dark:text-pink-300 font-medium"
+                              placeholder="インタビュー名を入力..."
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase flex items-center gap-1.5">
+                              <TargetIcon className="w-3 h-3" />
+                              ターゲット
+                            </label>
+                            <input
+                              type="text"
+                              value={targetAudience}
+                              onChange={(e) => setTargetAudience(e.target.value)}
+                              className="w-full px-3 py-1.5 text-sm bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg focus:ring-1 focus:ring-blue-400 outline-none text-blue-700 dark:text-blue-300 font-medium"
+                              placeholder="ターゲットを入力..."
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase flex items-center gap-1.5">
+                              <GlobeIcon className="w-3 h-3" />
+                              媒体
+                            </label>
+                            <input
+                              type="text"
+                              value={mediaType}
+                              onChange={(e) => setMediaType(e.target.value)}
+                              className="w-full px-3 py-1.5 text-sm bg-green-50/50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-lg focus:ring-1 focus:ring-green-400 outline-none text-green-700 dark:text-green-300 font-medium"
+                              placeholder="媒体を入力..."
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase flex items-center gap-1.5">
+                            <ArrowLeftIcon className="w-3 h-3 rotate-90" />
+                            目的
+                          </label>
+                          <textarea
+                            value={interviewPurpose}
+                            onChange={(e) => setInterviewPurpose(e.target.value)}
+                            className="w-full px-3 py-1.5 text-sm bg-purple-50/50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg focus:ring-1 focus:ring-purple-400 outline-none text-purple-700 dark:text-purple-300 font-medium min-h-[60px]"
+                            placeholder="目的を入力..."
+                          />
+                        </div>
                       </div>
 
                       {/* 全体のプレビューテキストを一番下に強調して表示 */}
@@ -1342,19 +1504,82 @@ function NewInterviewPageContent() {
                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-tighter mb-2">
                           📝 実際の冒頭スクリプト（プレビュー）
                         </label>
-                        <div className="p-3 bg-purple-50/50 dark:bg-purple-900/10 rounded-lg border border-purple-100/50 dark:border-purple-800/30 text-sm leading-relaxed text-gray-800 dark:text-gray-200">
-                          本日はお忙しい中ご対応いただきありがとうございます。
-                          <span className="font-bold underline decoration-indigo-400 underline-offset-2">{companyName || 'BanKisha'}</span> の
-                          <span className="font-bold underline decoration-indigo-400 underline-offset-2">{selectedInterviewer?.name || '担当者'}</span> と申します。
-                          今回は <span className="font-bold underline decoration-pink-400 underline-offset-2">{title || '（未入力）'}</span> ということで、
-                          <span className="font-bold underline decoration-blue-400 underline-offset-2">{targetAudience || '（未入力）'}</span> のかたに向けて、
-                          <span className="font-bold underline decoration-purple-400 underline-offset-2">{interviewPurpose || '（未入力）'}</span> と考えておりまして、
-                          <span className="font-bold underline decoration-green-400 underline-offset-2">{mediaType || '（未入力）'}</span> に掲載予定です。
-                          それではさっそくインタビューに入らせていただきます。
-                        </div>
+                        <textarea
+                          value={openingMessage}
+                          onChange={(e) => setOpeningMessage(e.target.value)}
+                          className="w-full p-3 bg-purple-50/50 dark:bg-purple-900/10 rounded-lg border border-purple-200 dark:border-purple-800/30 text-sm leading-relaxed text-gray-800 dark:text-gray-200 min-h-[120px] focus:ring-1 focus:ring-purple-400 outline-none"
+                          placeholder="冒頭の挨拶文がここに表示されます。自由に編集可能です。"
+                        />
+                      </div>
+                      <div className="mt-2 flex justify-end gap-2">
+                        <Button
+                          onClick={handleReadAloud}
+                          variant="outline"
+                          size="sm"
+                          className={`text-xs ${isSpeaking ? 'border-red-200 text-red-600 bg-red-50' : 'border-purple-200 text-purple-600 font-bold'}`}
+                        >
+                          {isSpeaking ? (
+                            <>
+                              <VolumeXIcon className="w-3 h-3 mr-1" />
+                              読み上げ停止
+                            </>
+                          ) : (
+                            <>
+                              <Volume2Icon className="w-3 h-3 mr-1" />
+                              🔊 冒頭を読み上げる
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          onClick={handleSave}
+                          variant="outline"
+                          size="sm"
+                          disabled={saving}
+                          className="text-xs border-purple-200 hover:bg-purple-50"
+                        >
+                          <SaveIcon className="w-3 h-3 mr-1" />
+                          冒頭挨拶のみ保存
+                        </Button>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              )}
 
+              {/* Question Generation Section */}
+              {showQuestionGeneration && (
+                <Card className="border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <span>📚 インタビューを生成</span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={handleSave}
+                          variant="outline"
+                          size="sm"
+                          disabled={saving}
+                          className="text-xs border-purple-200"
+                        >
+                          <SaveIcon className="w-3 h-3 mr-1" />
+                          質問構成のみ保存
+                        </Button>
+                        <Button
+                          onClick={handleGenerateQuestionsWithKnowledge}
+                          disabled={loadingQuestions || !interviewId}
+                          variant="outline"
+                          size="sm"
+                          title={!interviewId ? '質問を生成するには、まず「インタビュー情報を保存」ボタンを押して保存してください。' : ''}
+                        >
+                          <RefreshCwIcon className={`w-4 h-4 mr-2 ${loadingQuestions ? 'animate-spin' : ''}`} />
+                          {loadingQuestions ? '生成中...' : '再生成'}
+                        </Button>
+                      </div>
+                    </CardTitle>
+                    <CardDescription>
+                      より良いインタビューを構成します
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
                     {/* 質問数入力 */}
                     <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                       <label className="text-sm font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">

@@ -1,37 +1,26 @@
-'use client'
-
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { ClerkProvider } from "@clerk/nextjs";
 import './globals.css'
-import { AuthProvider } from '@/components/auth/AuthProvider'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
 import { Toaster } from '@/components/ui/toaster'
-import { usePathname } from 'next/navigation'
+import { LayoutContent } from '@/components/layout/LayoutContent'
 
 const inter = Inter({ subsets: ['latin'] })
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const pathname = usePathname()
-  const isInterviewPage = pathname?.startsWith('/interview/')
-  const isMediaPage = pathname?.startsWith('/media')
+export const metadata: Metadata = {
+  title: 'BanKisha - AI Interview Platform',
+  description: 'AI-powered interview and article generation',
+}
 
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ja" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
-        <AuthProvider>
-          {!isInterviewPage && !isMediaPage && <Header />}
-          <main className={isMediaPage ? "min-h-screen" : "min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900"}>
-            {children}
-          </main>
-          {!isInterviewPage && !isMediaPage && <Footer />}
+    <ClerkProvider>
+      <html lang="ja" suppressHydrationWarning>
+        <body className={inter.className} suppressHydrationWarning>
+          <LayoutContent>{children}</LayoutContent>
           <Toaster />
-        </AuthProvider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </ClerkProvider>
   )
 }

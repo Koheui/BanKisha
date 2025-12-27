@@ -2,147 +2,111 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { Input } from '@/components/ui/input'
+import { ImageUploader } from '@/components/ui/ImageUploader'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { doc, getDoc, getFirestore } from 'firebase/firestore'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Loader2 } from 'lucide-react'
+import { useToast } from '@/components/ui/use-toast'
 
 export default function ProfileManager() {
-  const { user, firebaseUser } = useAuth()
-  const [displayName, setDisplayName] = useState('')
-  const [companyName, setCompanyName] = useState('')
-  const [bio, setBio] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [message, setMessage] = useState('')
-  const [companyId, setCompanyId] = useState<string | undefined>(undefined);
+  const { user, loading: authLoading } = useAuth()
+  const { toast } = useToast()
 
+  const [displayName, setDisplayName] = useState('')
+  const [bio, setBio] = useState('')
+  const [photoURL, setPhotoURL] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (user) {
       setDisplayName(user.displayName || '')
-      setCompanyId(user.companyId)
       setBio(user.bio || '')
+      setPhotoURL(user.photoURL || '')
     }
   }, [user])
 
-  useEffect(() => {
-    if (companyId) {
-      const fetchCompanyName = async () => {
-        const db = getFirestore();
-        const companyDoc = await getDoc(doc(db, "companies", companyId));
-        if (companyDoc.exists()) {
-          setCompanyName(companyDoc.data().name);
-        }
-      };
-      fetchCompanyName();
-    } else {
-      setCompanyName('');
-    }
-  }, [companyId]);
+  const handleUploadComplete = (url: string) => {
+    setPhotoURL(url)
+  }
 
-  const handleSave = async () => {
-    if (!firebaseUser) {
-      setMessage('エラー: 認証されていません。');
-      return;
-    }
-
-    setIsLoading(true)
-    setMessage('')
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
 
     try {
-      const token = await firebaseUser.getIdToken()
-      const response = await fetch('/api/user/update-profile', {
+      const response = await fetch('/api/user/profile', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ displayName, companyName, bio }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName, bio, photoURL }),
       })
 
-      const data = await response.json()
-
-      if (response.ok) {
-        setMessage('プロフィールが正常に更新されました。')
-        if (data.companyId) {
-          setCompanyId(data.companyId);
-        }
-      } else {
-        setMessage(`エラー: ${data.error}`)
+      if (!response.ok) {
+        throw new Error('Failed to update profile')
       }
+      
+      toast({
+        title: "成功",
+        description: "プロフィールが正常に更新されました。",
+      })
     } catch (error) {
-      console.error('Failed to update profile:', error)
-      setMessage('プロフィールの更新に失敗しました。')
+      console.error('Failed to update profile', error)
+      toast({
+        title: "エラー",
+        description: "プロフィールの更新に失敗しました。",
+        variant: "destructive",
+      })
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
   }
 
-  if (!user) {
-    return null
+  if (authLoading) {
+    return <div>Loading...</div>
   }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>ユーザー情報</CardTitle>
-        <CardDescription>表示名や所属会社情報を編集できます。</CardDescription>
+        <CardDescription>公開プロフィール情報を編集します。</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="email">メールアドレス</Label>
-          <Input id="email" type="email" value={user.email || ''} disabled />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="displayName">表示名</Label>
-          <Input
-            id="displayName"
-            type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="山田 太郎"
-          />
-        </div>
-        <div className="space-y-2 pb-2">
-          <Label htmlFor="companyName">会社名</Label>
-          <Input
-            id="companyName"
-            type="text"
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            placeholder="株式会社〇〇"
-            className={!user.companyId ? "border-orange-400 focus-visible:ring-orange-400" : ""}
-          />
-          {!user.companyId ? (
-            <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
-              <p className="text-sm text-orange-800 font-medium">
-                ⚠️ インタビューを作成するには会社名の登録が必要です。
-              </p>
-              <p className="text-xs text-orange-700 mt-1">
-                会社名を登録（保存）すると、あなた専用のインタビュー・記事管理スペースが作成されます。
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">
-              会社名を登録すると、会社専用の機能が利用可能になります。
-            </p>
-          )}
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="bio">自己紹介 / バイオ</Label>
-          <textarea
-            id="bio"
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            placeholder="インタビュアーとしての経歴や、あなたの想いについて詳しく教えてください。"
-            className="w-full min-h-[100px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          />
-        </div>
-        <Button onClick={handleSave} disabled={isLoading}>
-          {isLoading ? '保存中...' : '保存'}
-        </Button>
-        {message && <p className="text-sm mt-4">{message}</p>}
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label>プロフィール写真</Label>
+            <ImageUploader
+              onUploadComplete={handleUploadComplete}
+              initialImageUrl={user?.photoURL}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="displayName">表示名</Label>
+            <Input
+              id="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bio">自己紹介</Label>
+            <Textarea
+              id="bio"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              rows={4}
+              placeholder="あなたの自己紹介を記入してください"
+            />
+          </div>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              変更を保存
+            </Button>
+          </div>
+        </form>
       </CardContent>
     </Card>
   )

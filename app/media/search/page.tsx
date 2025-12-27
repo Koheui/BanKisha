@@ -4,6 +4,8 @@ import { LoaderIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Metadata } from 'next'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: '検索 | BanKisha-Kawaraban（番記者瓦版）',
   description: 'BanKisha-Kawaraban（番記者瓦版）の記事検索ページです。',

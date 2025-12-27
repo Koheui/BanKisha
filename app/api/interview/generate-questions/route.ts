@@ -4,24 +4,30 @@ import * as admin from 'firebase-admin'
 import { initializeFirebaseAdmin } from '@/src/lib/firebase-admin'
 
 export async function POST(request: NextRequest) {
+  let currentStep = 'Initial'
   try {
+    currentStep = 'Firebase Admin Init'
     await initializeFirebaseAdmin()
     const adminDb = admin.firestore()
     console.log('📥 [API] Received generate questions request')
 
+    currentStep = 'Authorization Header'
     const authHeader = request.headers.get('Authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
     }
 
+    currentStep = 'Decode Token'
     const idToken = authHeader.split('Bearer ')[1]
     let decodedToken: admin.auth.DecodedIdToken
     try {
       decodedToken = await admin.auth().verifyIdToken(idToken)
     } catch (error) {
-      return NextResponse.json({ error: '認証に失敗しました' }, { status: 401 })
+      console.error('❌ Auth Error:', error)
+      return NextResponse.json({ error: '認証に失敗しました', details: error instanceof Error ? error.message : 'Unknown' }, { status: 401 })
     }
 
+    currentStep = 'Parse Body'
     const body = await request.json()
     const {
       title,
@@ -33,22 +39,32 @@ export async function POST(request: NextRequest) {
       interviewSource,
       interviewerName,
       interviewerPrompt,
-      numQuestions = 6,
       category,
       previousQuestions = [],
       userFeedback = '',
       knowledgeBaseIds = [],
-      companyId
+      companyId,
+      questionCount
     } = body
 
-    const geminiKeyPresent = !!process.env.GEMINI_API_KEY
-    const geminiKeyLength = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0
-    console.log('🔑 GEMINI key present:', geminiKeyPresent, 'keyLength:', geminiKeyLength)
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+    const numQuestions = questionCount || body.numQuestions || 6
+
+    currentStep = 'Gemini Config'
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey) {
+      console.error('❌ GEMINI_API_KEY is missing in environment variables')
+      throw new Error('GEMINI_API_KEY is not configured')
+    }
+
+    const geminiKeyLength = apiKey.length
+    console.log('🔑 GEMINI key present, keyLength:', geminiKeyLength)
+
+    const genAI = new GoogleGenerativeAI(apiKey)
     let knowledgeBaseContext = ''
     let skillKnowledgeContext = ''
     let userKBLogs = { count: 0 }
 
+    currentStep = 'Skill KB Load'
     // 1. スキルナレッジベース（共有のプロンプトエンジニアリング・対話術）
     const skillKBIds = ['skill-dialogue-v1'] // デフォルトのスキルKB
     try {
@@ -79,9 +95,10 @@ export async function POST(request: NextRequest) {
         }).join('\n\n')
       }
     } catch (e) {
-      console.warn('⚠️ Skill KB load failed')
+      console.warn('⚠️ Skill KB load failed', e)
     }
 
+    currentStep = 'User KB Load'
     // 2. ユーザーナレッジベース（個人スコープの専門知識）
     if (knowledgeBaseIds && knowledgeBaseIds.length > 0) {
       try {
@@ -123,7 +140,7 @@ export async function POST(request: NextRequest) {
           knowledgeBaseContext = skillKnowledgeContext
         }
       } catch (e) {
-        console.warn('⚠️ User KB load failed')
+        console.warn('⚠️ User KB load failed', e)
         knowledgeBaseContext = skillKnowledgeContext
       }
     } else {
@@ -132,6 +149,7 @@ export async function POST(request: NextRequest) {
 
     console.log('📚 KB Context Info:', { skill: !!skillKnowledgeContext, userKBs: userKBLogs.count })
 
+    currentStep = 'Gemini Model Init'
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.0-flash',
       generationConfig: { temperature: 0.0 }, // Deterministic output for stable JSON
@@ -196,6 +214,7 @@ JSON形式で以下のキーを含めてください：
 `
 
     const fullPrompt = `${rolePrompt}\n\n${contextPrompt}\n\n${instructionPrompt}`
+    currentStep = 'Gemini Generate Content'
     const result = await model.generateContent([fullPrompt])
     let responseText = result.response.text()
 
@@ -208,26 +227,33 @@ JSON形式で以下のキーを含めてください：
 
     // Helper function to extract and parse JSON
     const extractAndParseJSON = (text: string) => {
-      // 1. Markdownコードブロック (```json ... ```) を除去
-      let cleanText = text.replace(/```json\n?/, '').replace(/```\n?$/, '').trim()
-
-      // 2. ブラケットの抽出（最も外側の { } を探す）
-      const match = cleanText.match(/\{[\s\S]*\}/)
-      if (!match) return null
-
       try {
-        return JSON.parse(match[0])
+        // 1. Markdownコードブロック (```json ... ```) を優先的に抽出
+        const jsonBlockMatch = text.match(/```json\s*([\s\S]*?)\s*```/)
+        let cleanText = jsonBlockMatch ? jsonBlockMatch[1] : text
+
+        // 2. ブラケットの抽出（最も外側の { } を探す）
+        const match = cleanText.match(/\{[\s\S]*\}/)
+        if (!match) {
+          console.error('❌ JSON delimiter not found in text:', text.substring(0, 200))
+          return null
+        }
+
+        const jsonString = match[0]
+        return JSON.parse(jsonString)
       } catch (e) {
-        console.error('JSON Parse Error:', e, 'Cleaned Text:', match[0])
+        console.error('❌ JSON Parse Error:', e, 'Text fragment:', text.substring(0, 500))
         return null
       }
     }
 
+    currentStep = 'JSON Parse'
     let parsed = extractAndParseJSON(responseText)
 
     if (!parsed) {
       // 再試行: モデルにさらに厳格に要求
-      console.warn('⚠️ AI did not return valid JSON. Attempting a strict retry with full context...')
+      console.warn('⚠️ AI did not return valid JSON. Attempting a strict retry...')
+      currentStep = 'Gemini Retry Content'
       try {
         const strictPrompt = `${fullPrompt}\n\n⚠️ 重要: 前回の回答は正しいJSON形式ではありませんでした。今回は必ず「純粋なJSONのみ」を、他の説明を一切省いて出力してください。`
         const retryResult = await model.generateContent([strictPrompt])
@@ -253,6 +279,7 @@ JSON形式で以下のキーを含めてください：
       }
     }
 
+    currentStep = 'Finalizing Response'
     const questionsArray = parsed?.questions || []
     const questionsString = Array.isArray(questionsArray) ? questionsArray.join('\n') : String(questionsArray)
 
@@ -263,9 +290,10 @@ JSON形式で以下のキーを含めてください：
     })
 
   } catch (error) {
-    console.error('❌ Question Generation Error:', error)
+    console.error(`❌ Question Generation Error [at ${currentStep}]:`, error)
     return NextResponse.json({
       error: '質問生成中にエラーが発生しました',
+      step: currentStep,
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
   }

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BizNews - ビジネスニュースメディア</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Noto+Sans+JP:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                        "text-dark": "#111318",
+                        "text-light": "#e0e2e6",
+                        "muted-light": "#616f89",
+                        "muted-dark": "#9aa2b1",
+                    },
+                    fontFamily: {
+                        "display": ['"Newsreader"', '"Noto Sans JP"', "serif"],
+                        "sans": ['"Noto Sans JP"', "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Newsreader', 'Noto Sans JP', serif;
+        }
+        .font-sans {
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-text-dark dark:text-text-light min-h-screen flex flex-col font-display antialiased">
+<!-- Navigation -->
+<div class="sticky top-0 z-50 bg-white/95 dark:bg-[#101622]/95 backdrop-blur-sm border-b border-[#f0f2f4] dark:border-gray-800">
+<div class="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
+<header class="flex items-center justify-between h-16">
+<!-- Logo & Main Nav -->
+<div class="flex items-center gap-8">
+<a class="flex items-center gap-2 group" href="#">
+<div class="w-8 h-8 bg-primary text-white rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-xl">newspaper</span>
+</div>
+<h1 class="text-2xl font-bold tracking-tight text-primary dark:text-white group-hover:opacity-80 transition-opacity">BizNews</h1>
+</a>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-bold text-text-dark dark:text-text-light hover:text-primary dark:hover:text-primary transition-colors" href="#">ホーム</a>
+<a class="text-sm font-medium text-muted-light dark:text-muted-dark hover:text-primary dark:hover:text-primary transition-colors" href="#">経済</a>
+<a class="text-sm font-medium text-muted-light dark:text-muted-dark hover:text-primary dark:hover:text-primary transition-colors" href="#">テクノロジー</a>
+<a class="text-sm font-medium text-muted-light dark:text-muted-dark hover:text-primary dark:hover:text-primary transition-colors" href="#">マーケット</a>
+<a class="text-sm font-medium text-muted-light dark:text-muted-dark hover:text-primary dark:hover:text-primary transition-colors" href="#">政治</a>
+<a class="text-sm font-medium text-muted-light dark:text-muted-dark hover:text-primary dark:hover:text-primary transition-colors" href="#">オピニオン</a>
+</nav>
+</div>
+<!-- Right Actions -->
+<div class="flex items-center gap-4">
+<button class="text-muted-light dark:text-muted-dark hover:text-primary dark:hover:text-primary transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+<div class="h-6 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block"></div>
+<div class="flex items-center gap-3 hidden sm:flex">
+<button class="text-sm font-bold text-muted-light dark:text-muted-dark hover:text-text-dark dark:hover:text-text-light transition-colors">ログイン</button>
+<button class="bg-primary hover:bg-primary/90 text-white text-sm font-bold py-2 px-4 rounded-lg transition-colors shadow-sm">
+                            購読する
+                        </button>
+</div>
+</div>
+</header>
+</div>
+</div>
+<!-- Main Content Wrapper -->
+<main class="flex-grow max-w-[1280px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+<!-- Top Section: Hero + Sidebar -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+<!-- Hero Article (Left 8 cols) -->
+<div class="lg:col-span-8 flex flex-col gap-6">
+<article class="group cursor-pointer">
+<div class="relative w-full aspect-[16/9] overflow-hidden rounded-xl mb-4 shadow-sm">
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10"></div>
+<div class="w-full h-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="Busy stock market floor with digital display boards" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDXCQuUavrdEcaq1Sxh01GNhXH_t_t20M0nD2l8Iwd-jSUlASyT4ItUkJYOZJ_wMAD1BAQHiAmn-Ndbedc6JD2jQ2nNNhLkXMOCJlALep3cUeOdRyx8eLWBmm-c4rArBMm-445EOBOtc-vJhnFX0jdKEuoWiYXbYss4HeDu0PK3U57Pb2VruWSpWwDn9iMCMiBzl5txoRIioX1IR6ve1iq-JH9QATDJxTHBp8u2_Tm9Xx9LTji8LaR64C9_s-Pi7RIjuh8xo7OU6KMP");'>
+</div>
+<div class="absolute bottom-0 left-0 p-6 z-20">
+<span class="inline-block px-2 py-1 mb-3 text-xs font-bold text-white bg-primary rounded uppercase tracking-wider">マーケット</span>
+<h2 class="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-2 drop-shadow-md">
+                                世界市場、新貿易協定を受け大幅反発へ
+                            </h2>
+<p class="text-gray-200 text-lg md:text-xl hidden md:block max-w-2xl font-sans font-light">
+                                米国主要指数は史上最高値を更新、アジア市場にも波及効果。投資家の期待が高まる中、専門家は慎重な見方を示す。
+                            </p>
+</div>
+</div>
+</article>
+<!-- Sub-hero Articles Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200 dark:border-gray-800">
+<article class="flex flex-col gap-3 group cursor-pointer">
+<div class="overflow-hidden rounded-lg aspect-video mb-1">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-105" data-alt="Modern office meeting room with glass walls" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDL3pdGBBhsAhqZQRe8Brzikba27rqBzZf7UhDgu42FYJgSxt3BYjnDp2qbbeSL2mtJn2fLuDYueIoguNhkNNap6tRH2KvMmVD80i3_JTqUiXjqM1VOrPROGbOClfccyRhHIaBtSS6SXoQhEbinAK_ok1Qq2AZDPtGmkuRd2KAsF5y_MyAQMLCfbdyl_UvWrUMk6glmfIrkxAguYXXAsXm3fxRzpxkSHjF0YZxdrxZyqAPpXxxVm8qshdFiQZ6dMwTdjf4e-Sg0Q91I");'></div>
+</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-primary uppercase mb-1">働き方改革</span>
+<h3 class="text-xl font-bold leading-snug group-hover:text-primary transition-colors">リモートワークの未来：ハイブリッドモデルの定着</h3>
+<p class="text-muted-light dark:text-muted-dark text-sm mt-2 line-clamp-2 font-sans">大手企業が長期戦略を見直す中、従業員の柔軟性と生産性のバランスをどう取るかが課題に。</p>
+</div>
+</article>
+<article class="flex flex-col gap-3 group cursor-pointer">
+<div class="overflow-hidden rounded-lg aspect-video mb-1">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-105" data-alt="Electric vehicle charging station" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB_BKHRN8P3AKkcO4tbZ04Evm07Kg6g0XZzxWskFX8C9Wfq_u-dtUauaHEI8JjlvvaGltzk1IqtRzZG5xS9b7yqruoVkFGmtMqQ7EeO5Ymc5QkARDfjS8Vt12YGCayHDvydk-tyvrRGi7Yt6F-nOjmuk0lEsenS9kGsS8azyMviZzeuFrGDwbZqBcwSDacdSc-AMQcZ0rApW-joISK2IfM4-hE5S88n2g69eYG5i_b-1HZxAtVGAkMjwDPlHvVnKsVf1xx6dtxNfY9c");'></div>
+</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-primary uppercase mb-1">テクノロジー</span>
+<h3 class="text-xl font-bold leading-snug group-hover:text-primary transition-colors">EV市場の激化：新規参入企業の挑戦と勝算</h3>
+<p class="text-muted-light dark:text-muted-dark text-sm mt-2 line-clamp-2 font-sans">既存自動車メーカーとの競争が激化する中、スタートアップ企業が独自の技術で市場シェア拡大を狙う。</p>
+</div>
+</article>
+</div>
+</div>
+<!-- Sidebar (Right 4 cols) -->
+<div class="lg:col-span-4 flex flex-col gap-8 pl-0 lg:pl-6 border-l-0 lg:border-l border-gray-200 dark:border-gray-800">
+<!-- Latest News List -->
+<section>
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary">flash_on</span>
+<h3 class="text-lg font-bold uppercase tracking-wider">最新ニュース</h3>
+</div>
+<div class="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
+<a class="py-3 group" href="#">
+<div class="flex items-baseline gap-2 mb-1">
+<span class="text-xs font-mono text-muted-light dark:text-muted-dark">14:30</span>
+<span class="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">速報</span>
+</div>
+<p class="text-base font-medium leading-snug group-hover:text-primary transition-colors">中央銀行、政策金利の据え置きを発表。市場予想通りの結果に。</p>
+</a>
+<a class="py-3 group" href="#">
+<div class="flex items-baseline gap-2 mb-1">
+<span class="text-xs font-mono text-muted-light dark:text-muted-dark">14:15</span>
+<span class="text-xs font-bold text-muted-light dark:text-muted-dark bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">テック</span>
+</div>
+<p class="text-base font-medium leading-snug group-hover:text-primary transition-colors">大手SNS企業、新たなプライバシー保護機能を全ユーザーに展開開始。</p>
+</a>
+<a class="py-3 group" href="#">
+<div class="flex items-baseline gap-2 mb-1">
+<span class="text-xs font-mono text-muted-light dark:text-muted-dark">13:45</span>
+<span class="text-xs font-bold text-muted-light dark:text-muted-dark bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">企業</span>
+</div>
+<p class="text-base font-medium leading-snug group-hover:text-primary transition-colors">A社とB社、合併交渉を中止。条件面での折り合いがつかず。</p>
+</a>
+<a class="py-3 group" href="#">
+<div class="flex items-baseline gap-2 mb-1">
+<span class="text-xs font-mono text-muted-light dark:text-muted-dark">13:10</span>
+<span class="text-xs font-bold text-muted-light dark:text-muted-dark bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">国際</span>
+</div>
+<p class="text-base font-medium leading-snug group-hover:text-primary transition-colors">欧州委員会、デジタル市場法に関する新たな指針を公表。</p>
+</a>
+<a class="py-3 group" href="#">
+<div class="flex items-baseline gap-2 mb-1">
+<span class="text-xs font-mono text-muted-light dark:text-muted-dark">12:55</span>
+<span class="text-xs font-bold text-muted-light dark:text-muted-dark bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">金融</span>
+</div>
+<p class="text-base font-medium leading-snug group-hover:text-primary transition-colors">ビットコイン、一時的な急落後に値を戻す展開。</p>
+</a>
+</div>
+<button class="w-full mt-4 py-2 text-sm font-bold text-primary border border-primary/30 rounded hover:bg-primary/5 transition-colors">もっと見る</button>
+</section>
+<!-- Market Summary Widget -->
+<div class="bg-gray-50 dark:bg-[#151b2d] rounded-lg p-5 border border-gray-100 dark:border-gray-800">
+<h4 class="text-sm font-bold text-muted-light dark:text-muted-dark uppercase mb-3">主要指数</h4>
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<span class="font-bold text-sm">日経平均</span>
+<div class="flex items-center gap-2">
+<span class="text-sm font-mono">38,520.15</span>
+<span class="text-xs font-bold text-green-600 bg-green-100 dark:bg-green-900/30 px-1 rounded">+1.2%</span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-bold text-sm">ダウ平均</span>
+<div class="flex items-center gap-2">
+<span class="text-sm font-mono">39,087.33</span>
+<span class="text-xs font-bold text-red-600 bg-red-100 dark:bg-red-900/30 px-1 rounded">-0.4%</span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-bold text-sm">ドル/円</span>
+<div class="flex items-center gap-2">
+<span class="text-sm font-mono">150.24</span>
+<span class="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-1 rounded">0.0%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Advertisement Placeholder -->
+<div class="w-full aspect-[4/3] bg-gray-100 dark:bg-[#151b2d] flex items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-700 text-xs text-muted-light">
+                    広告スペース
+                </div>
+</div>
+</div>
+<!-- Section: Opinion & Editor's Picks -->
+<section class="py-10 border-t border-gray-200 dark:border-gray-800">
+<div class="flex justify-between items-end mb-8">
+<h2 class="text-2xl font-bold">オピニオン &amp; 分析</h2>
+<a class="text-primary text-sm font-bold hover:underline" href="#">すべて見る</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Opinion Card 1 -->
+<article class="flex flex-col h-full bg-white dark:bg-[#151b2d] border border-gray-100 dark:border-gray-800 p-5 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-gray-200 bg-cover bg-center" data-alt="Portrait of a male financial analyst" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDlea2TorWtQOwhwOWvBnZ6_bVkzTNOkohIMTLwxD2u9fIVS8SHoidtxJWDRZwiGh7cOm5C9yoPlNGPJeLdS9HJUA2NfOVnKjjsU_u2BR4zVObqixeQm01yNtOgLH5g4cxVT8pBut0LXU9j5T-ejivq9vGh3nNmxjEMKHmxSWcakhS8J0eMNxdIRleP70lB_ZCM_xvj3SbC9rc18eQqVQVcJogADBrPjBg2-v4Dr2cP7U6-yq9jytvp4GlhlCkDxqrWknRHxDEv1BNR");'></div>
+<div>
+<p class="text-xs font-bold text-primary uppercase">経済コラム</p>
+<p class="text-sm font-medium text-text-dark dark:text-text-light">佐藤 健太郎</p>
+</div>
+</div>
+<h3 class="text-lg font-bold leading-tight mb-3 flex-grow">「インフレの時代」における資産防衛術とは</h3>
+<p class="text-sm text-muted-light dark:text-muted-dark font-sans line-clamp-3">過去のデータが通用しない現代の市場環境において、個人投資家が取るべき戦略を再考する。</p>
+</article>
+<!-- Opinion Card 2 -->
+<article class="flex flex-col h-full bg-white dark:bg-[#151b2d] border border-gray-100 dark:border-gray-800 p-5 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-gray-200 bg-cover bg-center" data-alt="Portrait of a female tech journalist" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD2Usi49_Grqa2GY2BBJ2J8Z1LhEyIfn73u8KqpXT5kx7p520w-3Itw_4WYcJj48H1dnClKfkfjmqGo3itkRR003B7orV2XxO3X_wEtDiveTbBlIgKem-61zlKnwFnee46xxZcAiQd37SaCOSRqsaV6lGu8882AMgE8R801GZMYaUISCxJhzj-r16bR0y2waCV4__HsqLDtGa38_F7f4VFO5OPapDRkSWT6QPZY4XYKd7xciiMbFLnq5Uy2y1jpRFX2B3bycK2F14Xg");'></div>
+<div>
+<p class="text-xs font-bold text-primary uppercase">テック視点</p>
+<p class="text-sm font-medium text-text-dark dark:text-text-light">鈴木 愛</p>
+</div>
+</div>
+<h3 class="text-lg font-bold leading-tight mb-3 flex-grow">生成AIバブルの崩壊は起こるのか？</h3>
+<p class="text-sm text-muted-light dark:text-muted-dark font-sans line-clamp-3">期待値が高騰し続けるAI関連銘柄。実需とのギャップを冷静に分析する必要がある。</p>
+</article>
+<!-- Opinion Card 3 -->
+<article class="flex flex-col h-full bg-white dark:bg-[#151b2d] border border-gray-100 dark:border-gray-800 p-5 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-gray-200 bg-cover bg-center" data-alt="Portrait of an older male economist" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCYVw221HHsttD5wL9MLzmosxrxekgFQQfepdSdOZUoHIp8qJjGUanpAF5s8es84LikV13cIKLlAsmqjcpGZDGOVkxN0Wfc_nI5iCgX3YyIRNf9297AvnBwaW_QUzLKyKlTEsJK91hWj6Yf7GuAboS73D36kRCmTcs_CKwLdn-pF3FnxAMWFsPqkt0kjdN41B8eKzfyiiCRh3sYlA5SSFnzSxPbKywQegBD3iJhU8i11og-HMLdvNTAJWfw0lr5-17VB6gmp9jVCVns");'></div>
+<div>
+<p class="text-xs font-bold text-primary uppercase">政策提言</p>
+<p class="text-sm font-medium text-text-dark dark:text-text-light">田中 宏</p>
+</div>
+</div>
+<h3 class="text-lg font-bold leading-tight mb-3 flex-grow">地方創生の鍵は「デジタル化」にあらず</h3>
+<p class="text-sm text-muted-light dark:text-muted-dark font-sans line-clamp-3">形だけのDX導入が地方経済を疲弊させている現状。真に必要なのは人への投資だ。</p>
+</article>
+<!-- Newsletter Promo Box (Takes up 4th slot) -->
+<div class="flex flex-col h-full bg-primary text-white p-6 rounded-lg justify-center text-center relative overflow-hidden group">
+<div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+<div class="relative z-10">
+<span class="material-symbols-outlined text-4xl mb-3">mail</span>
+<h3 class="text-xl font-bold mb-2">Morning Briefing</h3>
+<p class="text-sm text-white/90 font-sans mb-4">ビジネスの「今」を毎朝お届け。忙しいあなたのためのニュースレター。</p>
+<div class="flex flex-col gap-2">
+<input class="w-full px-3 py-2 rounded text-text-dark text-sm border-none focus:ring-2 focus:ring-white/50" placeholder="メールアドレス" type="email"/>
+<button class="w-full bg-white text-primary font-bold text-sm py-2 rounded hover:bg-gray-100 transition-colors">登録する (無料)</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Industry Focus (Horizontal Scroll on Mobile, Grid on Desktop) -->
+<section class="py-10 border-t border-gray-200 dark:border-gray-800">
+<div class="flex justify-between items-end mb-6">
+<h2 class="text-2xl font-bold">注目の業界トレンド</h2>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined text-sm">arrow_back</span>
+</button>
+<button class="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+<!-- Card 1 -->
+<article class="group">
+<div class="overflow-hidden rounded-lg aspect-[3/2] mb-3">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-105" data-alt="Futuristic clean energy wind turbines" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAGyPoTdHmD2zbbZvURFI7VUnrCRo4fmwqaKB4CMjsqRhDg6Y--81776-YXz2CbwnB_E6G10ji-vjw0hdCzR0XIqLF5N4es76ssWHrt2VkkyBcNXBw8p928q1MNnrPGvK55Kp328-5Yg9NRGBUji_kiGNLKT0aALtHnxnozp9ShTnoU92jD7_xhdH0KMiUfLvN5cp_VP_GZVBAKob5c3Zh-KE9RAkb4LDtiyLpgMmgW-a9J0MSFrBSlrfE1yW61Qbw0XNjQM1BL7nV1");'></div>
+</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-muted-light dark:text-muted-dark uppercase mb-1">エネルギー</span>
+<h3 class="text-xl font-bold mb-2 group-hover:text-primary transition-colors">再生可能エネルギー投資、過去最高額を更新</h3>
+<p class="text-sm text-muted-light dark:text-muted-dark font-sans line-clamp-2">脱炭素社会への移行が加速する中、機関投資家の資金が集中。</p>
+</div>
+</article>
+<!-- Card 2 -->
+<article class="group">
+<div class="overflow-hidden rounded-lg aspect-[3/2] mb-3">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-105" data-alt="Shipping containers at a busy port" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBQdAn2Q3udryO17qN6srgDsQEskD9XZXK43R4fEhvsBMe4hGgpCntSHeNjdc-VDINRTkSnVHHxLuccnrQpMbTmgiiSX6WYujkdfaT_rbi7_v4x4lHcQMrdIvWV0g28FllmIcils1iAK-tMPUAuoqH8Jz-kPf9SpPWypZHYCUib_m5n0JMA-i_GQtgBnzAU0u3R-57X3xYotG78aNkrpQXW6qcw9x5733KBEG_1qkD08nezr5_67MDy0pkRYzLrkeaPvLnrprK8-JT6");'></div>
+</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-muted-light dark:text-muted-dark uppercase mb-1">物流・サプライチェーン</span>
+<h3 class="text-xl font-bold mb-2 group-hover:text-primary transition-colors">世界的な物流コストの上昇、年末商戦への影響懸念</h3>
+<p class="text-sm text-muted-light dark:text-muted-dark font-sans line-clamp-2">原油高と人手不足のダブルパンチで、小売価格への転嫁が避けられない状況に。</p>
+</div>
+</article>
+<!-- Card 3 -->
+<article class="group">
+<div class="overflow-hidden rounded-lg aspect-[3/2] mb-3">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-105" data-alt="Microchip processor macro shot" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDl6u8VTUyCF3wRUnBiqSd1hV9R54BzLEVYmJLOXuDl1Tjg4rncfugggl_6Duq0tvG0fvdP0h_cuX4bK-SBVMjg9OGrKPH5M9_0TVK-GB1yoGxpHZxtD0WEZ7ZEW5tNutbFsJCnjnH8M7XpdB5bKQxY1oEcnOVUt4c2oxM_CEJhg7kBAQN3tBBJS8pzwmuNmnbSUGlSBDkPE0AyhABi5PP3A7Lp2KB2-nEX-fVIZrzcCjO8x5gtLYtLi8nvW6DjqF9vmjhEnS3UffKV");'></div>
+</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-muted-light dark:text-muted-dark uppercase mb-1">半導体</span>
+<h3 class="text-xl font-bold mb-2 group-hover:text-primary transition-colors">国産半導体への回帰、政府が巨額支援を決定</h3>
+<p class="text-sm text-muted-light dark:text-muted-dark font-sans line-clamp-2">経済安全保障の観点から、国内生産能力の強化を急ぐ。</p>
+</div>
+</article>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-white dark:bg-[#101622] border-t border-gray-200 dark:border-gray-800 pt-16 pb-8">
+<div class="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
+<!-- Brand Col -->
+<div class="lg:col-span-2">
+<a class="flex items-center gap-2 mb-6" href="#">
+<div class="w-8 h-8 bg-primary text-white rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-xl">newspaper</span>
+</div>
+<h2 class="text-2xl font-bold text-primary dark:text-white">BizNews</h2>
+</a>
+<p class="text-muted-light dark:text-muted-dark text-sm mb-6 max-w-sm font-sans">
+                        BizNewsは、ビジネスリーダーのための信頼できる情報源です。最新の経済ニュース、市場分析、テクノロジートレンドを公平な視点でお届けします。
+                    </p>
+<div class="flex gap-4">
+<a class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-primary hover:text-white transition-colors" href="#">
+<svg class="w-5 h-5 fill-current" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-primary hover:text-white transition-colors" href="#">
+<svg class="w-5 h-5 fill-current" viewbox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.072 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path></svg>
+</a>
+<a class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-primary hover:text-white transition-colors" href="#">
+<svg class="w-5 h-5 fill-current" viewbox="0 0 24 24"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h5v-8.321c0-4.605 5.438-4.3 5.438 0v8.321h5v-9.388c0-7.711-8.47-7.461-10.47-3.931v-1.002z"></path></svg>
+</a>
+</div>
+</div>
+<!-- Link Col 1 -->
+<div>
+<h4 class="font-bold text-lg mb-4">ニュース</h4>
+<ul class="space-y-3 font-sans text-sm">
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">経済</a></li>
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">マーケット</a></li>
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">テクノロジー</a></li>
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">政治</a></li>
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">国際</a></li>
+</ul>
+</div>
+<!-- Link Col 2 -->
+<div>
+<h4 class="font-bold text-lg mb-4">分析・コラム</h4>
+<ul class="space-y-3 font-sans text-sm">
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">オピニオン</a></li>
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">特集記事</a></li>
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">インタビュー</a></li>
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">動画コンテンツ</a></li>
+</ul>
+</div>
+<!-- Link Col 3 -->
+<div>
+<h4 class="font-bold text-lg mb-4">サポート</h4>
+<ul class="space-y-3 font-sans text-sm">
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">会社概要</a></li>
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">お問い合わせ</a></li>
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">プライバシーポリシー</a></li>
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">利用規約</a></li>
+<li><a class="text-muted-light dark:text-muted-dark hover:text-primary transition-colors" href="#">広告掲載について</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-gray-100 dark:border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="text-xs text-muted-light dark:text-muted-dark font-sans">
+                    © 2024 BizNews Media Inc. All rights reserved.
+                </p>
+<div class="flex gap-4">
+<!-- Language Switcher or small links -->
+<button class="text-xs font-bold text-muted-light dark:text-muted-dark hover:text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">language</span> 日本語
+                     </button>
+</div>
+</div>
+</div>
+</footer>
+</body></html>

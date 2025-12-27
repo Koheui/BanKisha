@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useAuth } from '@/components/auth/AuthProvider'
+import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -17,20 +17,21 @@ import {
 } from 'lucide-react'
 
 export default function HomePage() {
-  const { user, loading } = useAuth()
+  const { isSignedIn, isLoaded } = useUser()
   const router = useRouter()
 
   // ログイン済みの場合はダッシュボードにリダイレクト
   useEffect(() => {
-    if (!loading && user) {
+    if (isLoaded && isSignedIn) {
       router.push('/dashboard')
     }
-  }, [user, loading, router])
+  }, [isSignedIn, isLoaded, router])
 
-  if (loading) {
+  if (!isLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" aria-busy="true" aria-live="polite">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <span className="sr-only">読み込み中...</span>
       </div>
     )
   }
@@ -51,13 +52,13 @@ export default function HomePage() {
               ビジネスメディア向けの次世代インタビュープラットフォーム。
             </p>
             <div className="flex items-center justify-center gap-4">
-              <Link href="/signup">
+              <Link href="/sign-up">
                 <Button size="lg" variant="gradient" className="text-lg px-8 py-6">
                   無料で始める
                   <ArrowRightIcon className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
-              <Link href="/login">
+              <Link href="/sign-in">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6">
                   ログイン
                 </Button>
@@ -173,7 +174,7 @@ export default function HomePage() {
                 プロフェッショナルなインタビュー記事を、数分で作成できます
               </p>
               <div className="flex items-center justify-center gap-4">
-                <Link href="/signup">
+                <Link href="/sign-up">
                   <Button size="lg" variant="gradient" className="text-lg px-8 py-6">
                     無料アカウント作成
                     <ArrowRightIcon className="w-5 h-5 ml-2" />
@@ -187,4 +188,3 @@ export default function HomePage() {
     </div>
   )
 }
-

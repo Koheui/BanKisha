@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Business Daily - Article Detail</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Newsreader", "serif"],
+                        "sans": ["Noto Sans", "sans-serif"],
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 20px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background-color: #334155;
+        }
+        
+        /* Drop cap for the first letter */
+        .drop-cap::first-letter {
+            float: left;
+            font-size: 3.5rem;
+            line-height: 0.8;
+            margin-right: 0.5rem;
+            font-weight: 700;
+            color: #135bec;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
+<div class="relative flex min-h-screen flex-col overflow-x-hidden">
+<!-- Sticky Header -->
+<header class="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-background-dark/95 backdrop-blur-md px-6 py-3 lg:px-10">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-slate-900 dark:text-white cursor-pointer hover:opacity-80 transition-opacity">
+<div class="size-6 text-primary">
+<svg fill="currentColor" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M6 6H42L36 24L42 42H6L12 24L6 6Z"></path></svg>
+</div>
+<h2 class="text-xl font-bold leading-tight tracking-tight">Business Daily</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-medium leading-normal text-slate-900 hover:text-primary dark:text-slate-200 dark:hover:text-primary transition-colors font-sans" href="#">Markets</a>
+<a class="text-sm font-medium leading-normal text-slate-900 hover:text-primary dark:text-slate-200 dark:hover:text-primary transition-colors font-sans" href="#">Tech</a>
+<a class="text-sm font-medium leading-normal text-slate-900 hover:text-primary dark:text-slate-200 dark:hover:text-primary transition-colors font-sans" href="#">Economy</a>
+<a class="text-sm font-medium leading-normal text-slate-900 hover:text-primary dark:text-slate-200 dark:hover:text-primary transition-colors font-sans" href="#">Opinion</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end items-center gap-4 lg:gap-8">
+<label class="hidden sm:flex flex-col min-w-40 h-9 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full bg-slate-100 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-primary">
+<div class="text-slate-500 flex items-center justify-center pl-3">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="flex w-full min-w-0 flex-1 bg-transparent border-none text-sm text-slate-900 dark:text-white placeholder:text-slate-500 px-3 focus:outline-none focus:ring-0 font-sans" placeholder="Search news..."/>
+</div>
+</label>
+<div class="flex items-center gap-4">
+<button class="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 ring-2 ring-slate-100 dark:ring-slate-800 cursor-pointer" data-alt="User profile avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDpwk9556vRp-6EhZRsc-a9Uc6JPucooF7niHGWK4TClC6Qju-lyDLMrfsbdjKrG-rXEIe0G4ZNddbynV9qasuRntptQUkCSI3vHPUtq5e6k1qVzZPQLC4M-abS4uBiE1pufUGSrENpZbiWjHFouuqEpOMYtWoK2C4lPR_eTET_9KPst157oAxC_wQN_WhXVtCtA8NDk6M3CazC5toJDIXmQiM6BE5PHQW8Q3lAmUez7rsL6YxfVcpekWPezSXKEvRLSS4Aug-PnGVL");'></div>
+</div>
+</div>
+</header>
+<!-- Main Layout -->
+<div class="flex flex-1 justify-center py-8 px-4 sm:px-6 lg:px-8">
+<div class="flex w-full max-w-[1200px] flex-col lg:flex-row gap-12">
+<!-- Left Column: Article Content -->
+<main class="flex-1 w-full lg:w-[65%] flex flex-col gap-6">
+<!-- Breadcrumbs -->
+<div class="flex flex-wrap gap-2 text-sm font-sans">
+<a class="text-slate-500 hover:text-primary transition-colors" href="#">Home</a>
+<span class="text-slate-400">/</span>
+<a class="text-slate-500 hover:text-primary transition-colors" href="#">Business</a>
+<span class="text-slate-400">/</span>
+<span class="text-slate-900 dark:text-white font-medium">Technology</span>
+</div>
+<!-- Article Header -->
+<div class="flex flex-col gap-4">
+<h1 class="text-4xl sm:text-5xl font-bold leading-[1.1] tracking-tight text-slate-900 dark:text-white">
+                            Global Markets React to New Tech Regulations in Asia
+                        </h1>
+<p class="text-xl text-slate-500 dark:text-slate-400 leading-relaxed">
+                            An in-depth analysis of how new regulatory frameworks are reshaping the Asian tech sector and what it means for global investors.
+                        </p>
+<!-- Author & Meta -->
+<div class="flex flex-wrap items-center justify-between gap-4 py-4 border-y border-slate-200 dark:border-slate-800 mt-2">
+<div class="flex items-center gap-3">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10" data-alt="Sarah Jenkins profile picture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBSdbKWtUnxcUKHiRZ7hWolpNmNb5vy5PjvJhMXoOvm_ilQZRHxR3qirABOfBMNK7NshRsnOgf7WmasLDB1egI9fEP37hvX3uylQvX5y1sUEf5BgMiwO31yz7nhNsyl_xcpo5udTjZ2_yxwLdl9Ysl5PYDa5k7TFMtiyzo3qXtuHVdLmYo9nyTSLrYKM9c6cB3olbfoqRpXoMs_wJEIwBZVLiZPxAaF9OTEpIrte70CMKUPZsH0ZWQW6uponOonQhAlahFOrPPFXymi");'></div>
+<div class="flex flex-col">
+<span class="text-slate-900 dark:text-white font-bold text-sm leading-tight">Sarah Jenkins</span>
+<span class="text-slate-500 text-xs font-sans">Senior Analyst • Oct 24, 2023</span>
+</div>
+</div>
+<div class="flex items-center gap-4 text-slate-500">
+<span class="flex items-center gap-1 text-xs font-sans font-medium uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[16px]">schedule</span> 5 min read
+                                </span>
+<div class="flex gap-2">
+<button class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400">
+<span class="material-symbols-outlined text-[20px]">bookmark</span>
+</button>
+<button class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Reading Progress (Contextual) -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<span class="text-xs font-sans font-medium text-slate-500 uppercase tracking-wider">Reading Progress</span>
+<span class="text-xs font-sans font-medium text-slate-900 dark:text-white">35%</span>
+</div>
+<div class="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[35%] rounded-full"></div>
+</div>
+</div>
+<!-- Hero Image -->
+<figure class="w-full">
+<div class="w-full aspect-video rounded-xl overflow-hidden shadow-sm">
+<img alt="Skyscrapers in a financial district with glass facades reflecting the sky" class="w-full h-full object-cover" data-alt="Skyscrapers in a financial district with glass facades reflecting the sky" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkgPAhne2SiOVRf1NZWo-QMXZjEmyPB-luIM9EMLrdzfa3kHCQAUz2KxRHyjN8_x2d4b-k67fjzc0F0wLSn8MEa_8Ze__NLDocE-uYbJ850Jd9ncvn3YM20yZAB9exXR3UHnCChXFpf_FZXWDX797XCGG5rM0vF3_cCc3nrVLKvdT_iFrz-zZ8dIZwKXGF8WYRJHSZOpmMYai5BgJl-SSSgIa6CDPksnl4im9AAMpS4urPrTDxOH8a0KniwgRpUP3zT3lzIZywMzUC"/>
+</div>
+<figcaption class="mt-2 text-sm text-slate-500 text-center italic font-sans">
+                            The financial district of Singapore serves as a backdrop for the new regulatory talks.
+                        </figcaption>
+</figure>
+<!-- Article Body -->
+<article class="prose prose-lg dark:prose-invert prose-slate max-w-none font-display text-slate-800 dark:text-slate-200">
+<p class="drop-cap lead">
+                            The landscape of technology in Asia is undergoing a seismic shift. As regulators in key markets tighten their grip on data privacy and antitrust laws, global investors are watching closely. The initial reaction has been one of caution, with major tech indices seeing a slight dip in early trading this week. However, long-term analysts suggest this could pave the way for more sustainable growth.
+                        </p>
+<p>
+                            "It's a necessary correction," says Mark Davis, a strategist at Global Fins. "For years, the sector has operated with minimal oversight. These new frameworks bring clarity, which is ultimately what institutional investors crave." The sentiment is echoed across trading floors in Hong Kong and Tokyo, where the volume of trades has stabilized after a volatile morning.
+                        </p>
+<div class="my-10 p-8 bg-slate-50 dark:bg-slate-800/50 border-l-4 border-primary rounded-r-xl">
+<blockquote class="text-2xl font-bold italic text-slate-900 dark:text-white not-italic leading-relaxed">
+                                "These new frameworks bring clarity, which is ultimately what institutional investors crave."
+                            </blockquote>
+<cite class="block mt-4 text-sm font-sans font-bold text-slate-500 uppercase tracking-wide not-italic">— Mark Davis, Strategist at Global Fins</cite>
+</div>
+<h3 class="text-2xl font-bold text-slate-900 dark:text-white mt-8 mb-4">Impact on Emerging Startups</h3>
+<p>
+                            While the giants of the industry navigate compliance audits, smaller startups face a different challenge. The cost of compliance is non-trivial. A recent survey indicates that 40% of Series A startups in the region may need to pivot their data strategies significantly to align with the new rules. This has led to a flurry of activity in the B2B compliance software market, which has seen a 200% increase in venture funding over the last quarter.
+                        </p>
+<!-- Inline Chart Placeholder -->
+<div class="my-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
+<div class="flex justify-between items-end mb-4">
+<h4 class="text-lg font-bold text-slate-900 dark:text-white font-sans">Tech Sector Volatility Index</h4>
+<span class="text-xs text-slate-500 font-sans">Last 30 Days</span>
+</div>
+<div class="h-48 w-full flex items-end gap-1">
+<div class="bg-primary/20 hover:bg-primary/40 w-full h-[40%] rounded-t-sm transition-all"></div>
+<div class="bg-primary/20 hover:bg-primary/40 w-full h-[60%] rounded-t-sm transition-all"></div>
+<div class="bg-primary/20 hover:bg-primary/40 w-full h-[45%] rounded-t-sm transition-all"></div>
+<div class="bg-primary/20 hover:bg-primary/40 w-full h-[70%] rounded-t-sm transition-all"></div>
+<div class="bg-primary/20 hover:bg-primary/40 w-full h-[55%] rounded-t-sm transition-all"></div>
+<div class="bg-primary/20 hover:bg-primary/40 w-full h-[80%] rounded-t-sm transition-all"></div>
+<div class="bg-primary hover:bg-primary-600 w-full h-[65%] rounded-t-sm transition-all relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap font-sans">
+                                        New Regulation Announced
+                                    </div>
+</div>
+<div class="bg-primary/20 hover:bg-primary/40 w-full h-[50%] rounded-t-sm transition-all"></div>
+<div class="bg-primary/20 hover:bg-primary/40 w-full h-[45%] rounded-t-sm transition-all"></div>
+</div>
+<div class="mt-2 flex justify-between text-xs text-slate-400 font-sans">
+<span>Sept 24</span>
+<span>Oct 24</span>
+</div>
+</div>
+<p>
+                            Despite the hurdles, the overarching mood is one of cautious optimism. The integration of these markets into a more standardized global system allows for easier cross-border partnerships. European and American firms, previously hesitant due to regulatory opacity, are now re-evaluating their entry strategies.
+                        </p>
+</article>
+<!-- Tags -->
+<div class="flex flex-wrap gap-2 mt-8 pb-8 border-b border-slate-200 dark:border-slate-800">
+<a class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-sm font-sans hover:bg-primary/10 hover:text-primary transition-colors" href="#">#Regulations</a>
+<a class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-sm font-sans hover:bg-primary/10 hover:text-primary transition-colors" href="#">#AsiaTech</a>
+<a class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-sm font-sans hover:bg-primary/10 hover:text-primary transition-colors" href="#">#GlobalMarkets</a>
+<a class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-sm font-sans hover:bg-primary/10 hover:text-primary transition-colors" href="#">#Investment</a>
+</div>
+<!-- Author Bio Card -->
+<div class="flex flex-col sm:flex-row gap-6 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-xl mt-4">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-20 shrink-0" data-alt="Sarah Jenkins profile picture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBG91IQUEwMDThqM9XuFXaQOwm1ujnZIFbn3IDRAL4aKWtPnuJ2G96R_QCGBy032u1vDSZpb9k21NqVGIRJcrFmhM864G58bTBXvlCGNLS3ne2WJgbupLzjl1p93LhGeo4FxXJ42T3Uv0bg68I9OSiG2frIh3vN5Lh0JP3hhOiaPuEZH6c5GL7_FCb9YdhsNAIUDBDycegOICFdGiuLe5A4oXm27EHGZ03O300sqy7HfMwNveGoJNQArBcv7XBccQGdRN6VbW5CUxAh");'></div>
+<div class="flex flex-col gap-2">
+<h4 class="font-bold text-lg text-slate-900 dark:text-white">About the Author</h4>
+<p class="text-sm text-slate-600 dark:text-slate-400 font-sans">
+                                Sarah Jenkins is a Senior Analyst covering Asian markets and technology policy. With over 15 years of experience in financial journalism, she has previously reported for The Daily Finance and Global Tech Review.
+                            </p>
+<div class="flex gap-4 mt-2">
+<a class="text-primary hover:underline text-sm font-sans font-medium" href="#">View all articles</a>
+<a class="text-slate-500 hover:text-primary transition-colors" href="#"><i class="material-symbols-outlined text-[20px]">mail</i></a>
+</div>
+</div>
+</div>
+<!-- Comments Section -->
+<div class="mt-12">
+<h3 class="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Comments (12)</h3>
+<!-- Input -->
+<div class="flex gap-4 mb-10">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10 shrink-0" data-alt="Current user avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAfL6hoOXap3UyGvt40rv84xFg6FysqlcO3OVpFpXWPAekq87sDiu6ifmoMq_O6r1UI20pIRioCyE6wiqNBIpD5IHSRoTMmHq3ryQ5gNaten3KyFrBFTCdjQArqJHnG1Qxas9P1tBwIqWVePDWrqrNWPsYq_WKg1y0H70DnSgkGDRYGsQp6e6Irh-DXuQlro5rRpQFsN2ru6Sn5uQR5XPoq9hCN3gGsq8pkuovrye6Lo8aGUJIkah3t5emnfpSymKejBGKclGi_9Ok9");'></div>
+<div class="flex-1">
+<textarea class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-transparent font-sans resize-none" placeholder="Join the discussion..." rows="3"></textarea>
+<div class="flex justify-end mt-2">
+<button class="bg-primary hover:bg-blue-600 text-white font-sans font-medium py-2 px-6 rounded-lg transition-colors text-sm">Post Comment</button>
+</div>
+</div>
+</div>
+<!-- Comment List -->
+<div class="flex flex-col gap-8">
+<!-- Comment 1 -->
+<div class="flex gap-4">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10 shrink-0" data-alt="Commenter avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA0sGQB3slu9RMrg-I18VuDimTs9VQQYp4IQJJHJgF6A-gdxpiX_magf5yYP_QD-qxKf1sRyHqVYRybbcWzQTSTRN_J_0b5S68DwS7QG4lcjoUXVTYV26WFFjBvu1V6rgD3abCtD0Smc75fI8ZEBGF_-8I_5dhhBjXKdH_7ug2Co-9nDlaQnCeWQ5k9yMNK2O5yNme4grR5q_oDxDREVTQ6gWMwq_OeJZ4ouTeGBoSDOEsKHx7FIOUGPj0469pP58u0v-63r6cq8Cjb");'></div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="font-bold text-slate-900 dark:text-white text-sm">James Wright</span>
+<span class="text-slate-400 text-xs font-sans">2 hours ago</span>
+</div>
+<p class="text-slate-700 dark:text-slate-300 text-base">Great analysis. I think the key takeaway here is the stability this brings. While short term volatility is expected, the long term outlook is much more positive.</p>
+<div class="flex items-center gap-4 mt-2">
+<button class="flex items-center gap-1 text-slate-500 hover:text-primary text-xs font-sans font-medium">
+<span class="material-symbols-outlined text-[16px]">thumb_up</span> 14
+                                        </button>
+<button class="text-slate-500 hover:text-primary text-xs font-sans font-medium">Reply</button>
+</div>
+</div>
+</div>
+<!-- Comment 2 -->
+<div class="flex gap-4">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10 shrink-0" data-alt="Commenter avatar 2" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA8SYOFPszpf5PsYr0UBeMZzNxK-VmIIIU39lPUvkm22hwQnMksLMhRTO-6DBp6KBswwQdppB5gsdSfQAdSaw3SlhxgUJrPG2HIF1PBypd7QSvdnsMcC25EMxwIPctUCM9ElNxz4FTNhB3A_fTSJBh7_cwUZQecXB6tbUym4BgKHu6QXan7qTGeLNLY1tgIuFaahC8DEqF3oOZQietl5I_bVSqS8T4CFK3ysaTY6qYRX2laYsuiGiSR7HQBvG26b_3JGWnkdjfpS3p_");'></div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="font-bold text-slate-900 dark:text-white text-sm">Elena Rodriguez</span>
+<span class="text-slate-400 text-xs font-sans">5 hours ago</span>
+</div>
+<p class="text-slate-700 dark:text-slate-300 text-base">I'm concerned about the impact on innovation. Heavy regulation often stifles the creativity that startups bring to the table.</p>
+<div class="flex items-center gap-4 mt-2">
+<button class="flex items-center gap-1 text-slate-500 hover:text-primary text-xs font-sans font-medium">
+<span class="material-symbols-outlined text-[16px]">thumb_up</span> 8
+                                        </button>
+<button class="text-slate-500 hover:text-primary text-xs font-sans font-medium">Reply</button>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-8 text-center">
+<button class="text-primary font-medium hover:underline font-sans text-sm">Load more comments</button>
+</div>
+</div>
+</main>
+<!-- Right Sidebar -->
+<aside class="w-full lg:w-[35%] flex flex-col gap-8">
+<!-- Newsletter Widget -->
+<div class="bg-slate-50 dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
+<div class="flex items-center gap-3 mb-4">
+<span class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">mail</span>
+</span>
+<h3 class="text-lg font-bold text-slate-900 dark:text-white leading-tight">Business Daily Brief</h3>
+</div>
+<p class="text-slate-600 dark:text-slate-300 mb-4 text-sm font-sans">
+                            Get the most important business stories delivered to your inbox every morning.
+                        </p>
+<form class="flex flex-col gap-3">
+<input class="w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-sans text-sm p-2.5 focus:ring-primary focus:border-primary" placeholder="Your email address" type="email"/>
+<button class="w-full bg-primary hover:bg-blue-600 text-white font-sans font-bold py-2.5 rounded-lg transition-colors shadow-sm" type="button">
+                                Subscribe
+                            </button>
+</form>
+<p class="text-xs text-slate-400 mt-3 text-center font-sans">No spam, unsubscribe anytime.</p>
+</div>
+<!-- Trending Now -->
+<div>
+<div class="flex items-center justify-between mb-4 border-b border-slate-200 dark:border-slate-800 pb-2">
+<h3 class="text-lg font-bold text-slate-900 dark:text-white uppercase tracking-wider font-sans text-sm">Trending Now</h3>
+</div>
+<div class="flex flex-col gap-0">
+<!-- Item 1 -->
+<a class="group flex gap-4 items-start py-4 border-b border-slate-100 dark:border-slate-800/50" href="#">
+<span class="text-3xl font-black text-slate-200 dark:text-slate-700 group-hover:text-primary transition-colors leading-none">01</span>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-bold text-primary uppercase font-sans">Markets</span>
+<h4 class="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors leading-tight">
+                                        Tech Stocks Rally as Federal Reserve Signals Rate Cut
+                                    </h4>
+</div>
+</a>
+<!-- Item 2 -->
+<a class="group flex gap-4 items-start py-4 border-b border-slate-100 dark:border-slate-800/50" href="#">
+<span class="text-3xl font-black text-slate-200 dark:text-slate-700 group-hover:text-primary transition-colors leading-none">02</span>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-bold text-primary uppercase font-sans">Energy</span>
+<h4 class="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors leading-tight">
+                                        Renewable Energy Investment Hits Record High in Q3
+                                    </h4>
+</div>
+</a>
+<!-- Item 3 -->
+<a class="group flex gap-4 items-start py-4 border-b border-slate-100 dark:border-slate-800/50" href="#">
+<span class="text-3xl font-black text-slate-200 dark:text-slate-700 group-hover:text-primary transition-colors leading-none">03</span>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-bold text-primary uppercase font-sans">Startups</span>
+<h4 class="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors leading-tight">
+                                        The Next Unicorn: This Fintech Company Just Raised $500M
+                                    </h4>
+</div>
+</a>
+<!-- Item 4 -->
+<a class="group flex gap-4 items-start py-4 border-b border-slate-100 dark:border-slate-800/50" href="#">
+<span class="text-3xl font-black text-slate-200 dark:text-slate-700 group-hover:text-primary transition-colors leading-none">04</span>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-bold text-primary uppercase font-sans">Opinion</span>
+<h4 class="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors leading-tight">
+                                        Why Remote Work is Here to Stay for Tech Giants
+                                    </h4>
+</div>
+</a>
+</div>
+</div>
+<!-- Related Topics Map/Image (Visual interest) -->
+<div class="relative overflow-hidden rounded-xl h-64 bg-slate-900 group cursor-pointer">
+<div class="absolute inset-0 bg-cover bg-center opacity-60 group-hover:opacity-40 transition-opacity" data-alt="Abstract global network connection map" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBW9g0XB2O9C5yt3JzbiNf1eU6nATsQt0Yxpxfm-_onhTIWX7ECFnu7freO6I64MO8PNJ8w7afx6qIjDIePFO2-ikjuKK5DF5JSSAH9kFWMUrv8w4jRHiv_fYbEa9A-8PkVDzONMILkLgIMSHIsrki7ayCmkr_c48dYFjr7kl-dBZe5JqIpZ-sfTedypqcvRu8cuTEdqTOD_p-iO5MdS5e4gP-4vOoxMPHly85s_9sLRHZpsaF0b8k3KilLf3Zd0aqzLHEA0ykubSN3");'></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-6 w-full">
+<span class="inline-block px-2 py-1 bg-primary text-white text-xs font-bold uppercase rounded mb-2 font-sans">Deep Dive</span>
+<h4 class="text-white font-bold text-xl leading-tight">The Future of Digital Currency in Asia</h4>
+<div class="flex items-center gap-2 mt-3 text-slate-300 text-sm font-sans">
+<span>Read Report</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</div>
+<!-- Read Next Section (Bottom Engagement) -->
+<section class="bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800 py-16 px-4 sm:px-6 lg:px-8 mt-12">
+<div class="max-w-[1200px] mx-auto">
+<div class="flex items-center justify-between mb-8">
+<h2 class="text-2xl font-bold text-slate-900 dark:text-white">Read Next</h2>
+<a class="text-primary font-medium hover:underline flex items-center gap-1 text-sm font-sans" href="#">
+                        See all Business News <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Card 1 -->
+<a class="group flex flex-col gap-4" href="#">
+<div class="aspect-[16/9] w-full rounded-lg overflow-hidden bg-slate-200">
+<img alt="Meeting room with business people discussing strategy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Meeting room with business people discussing strategy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCr34i9WgF1tfGDf3qoQ4t3dBA0FRB9La0kHA4fPUB03n6Fj74sCHBee2kqZs5dFC0843A-1-qGB5S7g9AseAylnNOabZNVOSmTm0fmcuWAYDNYKIvZ2lLxhCXw66VWFPevt5L5TfDE1QfTju2K5qpofNDCG5EkTMxA4iq7-SQX4WL0q4uhBUgwZKMUFgiDJ1OWVJfDRnz4Wqt7DKyYKEENP_Odj07OV5lxZeaNDC4gMD9Zuf5U9bl8ix82MgZLAtMZcM2fhu7BuP0N"/>
+</div>
+<div class="flex flex-col gap-2">
+<span class="text-xs font-bold text-primary uppercase font-sans">Corporate</span>
+<h3 class="text-xl font-bold text-slate-900 dark:text-white leading-tight group-hover:text-primary transition-colors">
+                                CEO Compensation Packages Under Scrutiny Again
+                            </h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
+                                New data reveals the widening gap between executive pay and average worker salaries.
+                            </p>
+</div>
+</a>
+<!-- Card 2 -->
+<a class="group flex flex-col gap-4" href="#">
+<div class="aspect-[16/9] w-full rounded-lg overflow-hidden bg-slate-200">
+<img alt="Server room with blue lights representing technology infrastructure" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Server room with blue lights representing technology infrastructure" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBu-pWG0B2k_oSzr2JdgsxBk5ZfOcGXzXGCuWjv8cSMORHR7HzuvWTU9x-nLrwzIgBtXt0YBvDrBFfE-hQwVBrCvFa9RDasQiGkLO8a_olZpMj0bFZzWImc-1X1y-GqeEdkQcSjrtIofJM8vBsATzISkkObDkXIkH4AKarn93gi-stmZuCQF-nE3tH24KkEvruC2b17ZD-HEGsruQ7ZOikAV2N65oMtXx5yTcLty3pOC7GRkQov6xqmKHnAO4KqgyF0nxyeosO34hGR"/>
+</div>
+<div class="flex flex-col gap-2">
+<span class="text-xs font-bold text-primary uppercase font-sans">Technology</span>
+<h3 class="text-xl font-bold text-slate-900 dark:text-white leading-tight group-hover:text-primary transition-colors">
+                                Cloud Infrastructure Growth Slows for First Time in Decade
+                            </h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
+                                Major providers report lower than expected earnings as market saturation looms.
+                            </p>
+</div>
+</a>
+<!-- Card 3 -->
+<a class="group flex flex-col gap-4" href="#">
+<div class="aspect-[16/9] w-full rounded-lg overflow-hidden bg-slate-200">
+<img alt="Abstract architectural details of a modern building" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Abstract architectural details of a modern building" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDX6vI0MpHkqSFJwC0zSc5fjMv1ap3wM8jDLX1fg-2HBHcKuS06wvJSy3VETkxdEeCtV2LfFCcP6hWt0SfxV3d4L6NzcoMGESp5qQRtt210El8oDWzufpbz5E6dbIPNiCjLreLOKGmhQ6DnG--CtPY82DJWXVIY2_oBF5Q6xT08ZZGOfbG5vadXGSLZjAb47PTau7EFE38R0QdP0LDD6b8rdQ2Ri7OXFnH-2eLJSHmEdA70WEgtrJIu_ZK77RyZ8CeYhc675fsYR5s8"/>
+</div>
+<div class="flex flex-col gap-2">
+<span class="text-xs font-bold text-primary uppercase font-sans">Real Estate</span>
+<h3 class="text-xl font-bold text-slate-900 dark:text-white leading-tight group-hover:text-primary transition-colors">
+                                Commercial Real Estate in Metros Faces New Crisis
+                            </h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
+                                With vacancy rates soaring, property managers are looking for creative solutions.
+                            </p>
+</div>
+</a>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="bg-white dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 py-10 px-4">
+<div class="max-w-[1200px] mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-2">
+<div class="size-5 text-slate-900 dark:text-white">
+<svg fill="currentColor" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M6 6H42L36 24L42 42H6L12 24L6 6Z"></path></svg>
+</div>
+<span class="text-lg font-bold text-slate-900 dark:text-white">Business Daily</span>
+</div>
+<div class="flex flex-wrap justify-center gap-8 text-sm text-slate-500 font-sans">
+<a class="hover:text-primary transition-colors" href="#">About Us</a>
+<a class="hover:text-primary transition-colors" href="#">Contact</a>
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+</div>
+<div class="text-sm text-slate-400 font-sans">
+                    © 2023 Business Daily. All rights reserved.
+                </div>
+</div>
+</footer>
+</div>
+</body></html>

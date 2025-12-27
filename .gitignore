@@ -46,3 +46,6 @@ service-account-key.json.json
 # functions
 functions/lib/
 functions/node_modules/
+
+# secrets
+Keys/

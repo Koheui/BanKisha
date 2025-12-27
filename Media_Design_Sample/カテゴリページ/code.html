@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Business News Category</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Newsreader", "serif"],
+                        "sans": ["Noto Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#111318] dark:text-[#f0f2f4]">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Header -->
+<header class="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#e5e7eb] dark:border-b-[#2a3441] bg-white dark:bg-[#1a202c] px-4 sm:px-10 py-3">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-[#111318] dark:text-white">
+<div class="size-8 text-primary">
+<svg class="h-full w-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M39.475 21.6262C40.358 21.4363 40.6863 21.5589 40.7581 21.5934C40.7876 21.655 40.8547 21.857 40.8082 22.3336C40.7408 23.0255 40.4502 24.0046 39.8572 25.2301C38.6799 27.6631 36.5085 30.6631 33.5858 33.5858C30.6631 36.5085 27.6632 38.6799 25.2301 39.8572C24.0046 40.4502 23.0255 40.7407 22.3336 40.8082C21.8571 40.8547 21.6551 40.7875 21.5934 40.7581C21.5589 40.6863 21.4363 40.358 21.6262 39.475C21.8562 38.4054 22.4689 36.9657 23.5038 35.2817C24.7575 33.2417 26.5497 30.9744 28.7621 28.762C30.9744 26.5497 33.2417 24.7574 35.2817 23.5037C36.9657 22.4689 38.4054 21.8562 39.475 21.6262ZM4.41189 29.2403L18.7597 43.5881C19.8813 44.7097 21.4027 44.9179 22.7217 44.7893C24.0585 44.659 25.5148 44.1631 26.9723 43.4579C29.9052 42.0387 33.2618 39.5667 36.4142 36.4142C39.5667 33.2618 42.0387 29.9052 43.4579 26.9723C44.1631 25.5148 44.659 24.0585 44.7893 22.7217C44.9179 21.4027 44.7097 19.8813 43.5881 18.7597L29.2403 4.41187C27.8527 3.02428 25.8765 3.02573 24.2861 3.36776C22.6081 3.72863 20.7334 4.58419 18.8396 5.74801C16.4978 7.18716 13.9881 9.18353 11.5858 11.5858C9.18354 13.988 7.18717 16.4978 5.74802 18.8396C4.58421 20.7334 3.72865 22.6081 3.36778 24.2861C3.02574 25.8765 3.02429 27.8527 4.41189 29.2403Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-[#111318] dark:text-white text-xl font-bold leading-tight tracking-[-0.015em]">Business News</h2>
+</div>
+<nav class="hidden md:flex items-center gap-9">
+<a class="text-[#111318] dark:text-[#f0f2f4] text-base font-medium leading-normal hover:text-primary" href="#">Home</a>
+<a class="text-[#111318] dark:text-[#f0f2f4] text-base font-medium leading-normal hover:text-primary" href="#">Markets</a>
+<a class="text-primary text-base font-bold leading-normal" href="#">Tech</a>
+<a class="text-[#111318] dark:text-[#f0f2f4] text-base font-medium leading-normal hover:text-primary" href="#">Politics</a>
+<a class="text-[#111318] dark:text-[#f0f2f4] text-base font-medium leading-normal hover:text-primary" href="#">Opinion</a>
+<a class="text-[#111318] dark:text-[#f0f2f4] text-base font-medium leading-normal hover:text-primary" href="#">More</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="hidden lg:flex flex-col min-w-40 !h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-[#616f89] dark:text-[#9aa0a6] flex border-none bg-[#f0f2f4] dark:bg-[#2a3441] items-center justify-center pl-4 rounded-l-lg border-r-0">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111318] dark:text-white focus:outline-0 focus:ring-0 border-none bg-[#f0f2f4] dark:bg-[#2a3441] focus:border-none h-full placeholder:text-[#616f89] dark:placeholder:text-[#9aa0a6] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal font-sans" placeholder="Search" value=""/>
+</div>
+</label>
+<button class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-blue-700 transition-colors">
+<span class="truncate font-sans">Subscribe</span>
+</button>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border border-[#e5e7eb] dark:border-[#2a3441]" data-alt="User profile avatar placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAMJr3LwvKW35l49w-5H6C3cTU2gxdmciNTPsjoQbRSeOSCWg7S3g0UvNaCMd-q_-2cTiJcFcOKrX39lQHT456ikmtD6rtcZIRQ2wshuNkVZGDk24OlJbJLfXhkUi6b4yrBVwd6go9ufVn6Ly1DBz68j6ARmS40zIMaT9l3fS20mT1QP_zundv7i4v_BsGgrud9xwihQ0-c-17mGPINOeqpHFfZ32LWp7Hf_wNjGk0Emy3-KT7g5vb4kxb7BOI4k7M47beFMoLfeya6");'></div>
+</div>
+</header>
+<div class="layout-container flex h-full grow flex-col">
+<div class="px-4 md:px-10 lg:px-40 flex flex-1 justify-center py-5">
+<div class="layout-content-container flex flex-col max-w-[1200px] flex-1">
+<!-- Breadcrumbs -->
+<div class="flex flex-wrap gap-2 px-4 py-2">
+<a class="text-[#616f89] dark:text-[#9aa0a6] text-sm font-medium leading-normal hover:underline" href="#">Home</a>
+<span class="text-[#616f89] dark:text-[#9aa0a6] text-sm font-medium leading-normal">/</span>
+<a class="text-[#616f89] dark:text-[#9aa0a6] text-sm font-medium leading-normal hover:underline" href="#">Business</a>
+<span class="text-[#616f89] dark:text-[#9aa0a6] text-sm font-medium leading-normal">/</span>
+<span class="text-[#111318] dark:text-[#f0f2f4] text-sm font-medium leading-normal">Technology</span>
+</div>
+<!-- Page Heading -->
+<div class="flex flex-wrap justify-between gap-3 px-4 py-6 border-b border-[#e5e7eb] dark:border-[#2a3441]">
+<div class="flex min-w-72 flex-col gap-2">
+<h1 class="text-[#111318] dark:text-white text-5xl font-bold leading-tight tracking-[-0.033em]">Technology</h1>
+<p class="text-[#616f89] dark:text-[#9aa0a6] text-lg font-normal leading-normal max-w-2xl">
+                                Latest insights, market analysis, and breaking news on the tech industry, from startups to global giants.
+                            </p>
+</div>
+<div class="flex items-end pb-1">
+<button class="flex min-w-[100px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-6 bg-[#eef3ff] dark:bg-[#1c2b45] text-primary text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#dbe6fe] dark:hover:bg-[#253859] transition-colors gap-2">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span class="truncate font-sans">Follow</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6 px-4">
+<!-- Main Content Column -->
+<main class="lg:col-span-8 flex flex-col gap-6">
+<!-- Featured Hero Article -->
+<article class="group relative flex flex-col items-stretch justify-start rounded-xl shadow-sm bg-white dark:bg-[#1a202c] overflow-hidden border border-[#e5e7eb] dark:border-[#2a3441] transition-shadow hover:shadow-md">
+<div class="w-full h-[360px] bg-center bg-no-repeat bg-cover" data-alt="Abstract visualization of semiconductor chips and glowing circuits" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDO7jWiCAUBwp-_LUD9Iu4moEYsQARZywv8OEqWteZds6kdsYo51Y3Wmb0LXlqtbcrIiVy6kzanG8x1RlbF6MABaro8gg7-2ftEOc0d2jwN9pNYmegLVYNsKrq48ivUWI9L4CRbMeTG6CsJdrxlWqCmyowfxro4j2SbVKFkdvB3bfqsDG1T2XiixT_5zHNiCGCdeSDziJjGNHdIkl1W6x7eH6vY09FYnwY5txp7fvFkn4FcriA8NfKVWBEellRkuiysYs2fBIqdIWOd");'>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-6 md:p-8 w-full">
+<div class="flex items-center gap-2 mb-3">
+<span class="bg-primary text-white text-xs font-bold px-2 py-1 rounded">FEATURED</span>
+<span class="text-gray-200 text-sm font-medium drop-shadow-md">Today, 2:30 PM</span>
+</div>
+<h2 class="text-white text-3xl md:text-4xl font-bold leading-tight tracking-tight mb-2 drop-shadow-md group-hover:underline decoration-2 underline-offset-4">
+                                            Semiconductor Shortage Ends: Global Markets React
+                                        </h2>
+<p class="text-gray-200 text-lg md:text-xl font-normal leading-relaxed max-w-3xl drop-shadow-md line-clamp-2">
+                                            Global markets are seeing a shift as supply chains normalize after years of disruption, impacting tech giants and consumers alike.
+                                        </p>
+</div>
+</div>
+</article>
+<!-- Filters & Sort -->
+<div class="sticky top-[73px] z-40 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm py-3 -mx-4 px-4 border-b border-[#e5e7eb] dark:border-[#2a3441] flex flex-wrap items-center justify-between gap-3">
+<div class="flex flex-wrap gap-2 overflow-x-auto no-scrollbar">
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg border border-[#d1d5db] dark:border-[#4b5563] bg-white dark:bg-[#1a202c] hover:bg-gray-50 dark:hover:bg-[#2d3748] px-3 transition-colors">
+<span class="text-[#111318] dark:text-[#f0f2f4] text-sm font-medium leading-normal font-sans">Date: All Time</span>
+<span class="material-symbols-outlined text-[#616f89] dark:text-[#9aa0a6] text-[20px]">expand_more</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg border border-[#d1d5db] dark:border-[#4b5563] bg-white dark:bg-[#1a202c] hover:bg-gray-50 dark:hover:bg-[#2d3748] px-3 transition-colors">
+<span class="text-[#111318] dark:text-[#f0f2f4] text-sm font-medium leading-normal font-sans">Topic: All</span>
+<span class="material-symbols-outlined text-[#616f89] dark:text-[#9aa0a6] text-[20px]">expand_more</span>
+</button>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[#616f89] dark:text-[#9aa0a6] text-sm font-normal">Sort by:</span>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg text-primary font-bold bg-transparent hover:bg-[#eef3ff] dark:hover:bg-[#1c2b45] px-2 transition-colors">
+<span class="text-sm leading-normal font-sans">Latest</span>
+<span class="material-symbols-outlined text-[20px]">sort</span>
+</button>
+</div>
+</div>
+<!-- Article Feed -->
+<div class="flex flex-col gap-4">
+<!-- Article Card 1 -->
+<article class="flex flex-col md:flex-row items-stretch gap-4 p-4 rounded-xl bg-white dark:bg-[#1a202c] border border-[#e5e7eb] dark:border-[#2a3441] shadow-sm hover:shadow-md transition-all group cursor-pointer">
+<div class="md:w-[240px] md:shrink-0 w-full aspect-video md:aspect-[4/3] rounded-lg bg-cover bg-center overflow-hidden" data-alt="Futuristic robotic hand interacting with a digital interface" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuACMU3Z5TqvCL0uHx29RD2mBrwuO8hp2Sc35qSpFG93yXe2t5kzi0N0cf2DHlfvcjnWxRHJ1mKSmU9W_lkW98Lra5n8I0RW-r5pcLD7xoQTTbFV729Cm936ncW5c3KgEaV7LFH2k9cmN0yEw3NY4y8g7qfOX_SXyQCkkgjpJNnyD2Jb0BEJsChbMyicAIL5gA1cYnt9L-P9uYdVpymFpnCGKtTZI72D4Dth72t_7bTprwedGmo2HjMH-gt6ojlStopsDVHlVtyr3xm0");'></div>
+<div class="flex flex-col justify-between py-1 flex-1">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="text-primary text-xs font-bold uppercase tracking-wider font-sans">AI &amp; Automation</span>
+<span class="text-[#9ca3af] text-xs">•</span>
+<span class="text-[#616f89] dark:text-[#9aa0a6] text-xs font-medium font-sans">5 min read</span>
+</div>
+<h3 class="text-[#111318] dark:text-white text-xl md:text-2xl font-bold leading-tight mb-2 group-hover:text-primary transition-colors">
+                                                The Rise of Generative AI in Enterprise Solutions
+                                            </h3>
+<p class="text-[#4b5563] dark:text-[#9ca3af] text-base font-normal leading-relaxed line-clamp-2">
+                                                From automated customer service to complex code generation, businesses are adopting AI at an unprecedented rate, reshaping the workforce landscape.
+                                            </p>
+</div>
+<div class="flex items-center mt-4 gap-2">
+<div class="size-6 rounded-full bg-cover bg-center" data-alt="Portrait of Kenji Tanaka" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDwI302O6QBrupt8M2QYF6eEpPr6Wk6PPAiGTscYb50xyimgzLAOHROy7YpL5z4FxvmZdXVU5hgpGtXPjnC6PEdchhCQeHiteUOLsjISZRwD0_WkP4LxtMvOg6mHBX-b9s6DL_94-G_iVF5easwn4I3iOsOL_C82sRCPAw5dSeh-oy01pIp1TSMRbsLqsPQNN3F3k-uHGstRrPEsQVcmB9vOaBJqCjjyHHQJ3WOo1bagu6EuzURqG41UfIRio4Qy10VWhX7SZ7uD6e4");'></div>
+<span class="text-[#111318] dark:text-[#e2e8f0] text-sm font-medium font-sans">Kenji Tanaka</span>
+<span class="text-[#9ca3af] text-sm">•</span>
+<span class="text-[#616f89] dark:text-[#9aa0a6] text-sm font-normal font-sans">Oct 24, 2023</span>
+</div>
+</div>
+</article>
+<!-- Article Card 2 -->
+<article class="flex flex-col md:flex-row items-stretch gap-4 p-4 rounded-xl bg-white dark:bg-[#1a202c] border border-[#e5e7eb] dark:border-[#2a3441] shadow-sm hover:shadow-md transition-all group cursor-pointer">
+<div class="md:w-[240px] md:shrink-0 w-full aspect-video md:aspect-[4/3] rounded-lg bg-cover bg-center overflow-hidden" data-alt="Modern office building glass facade reflecting blue sky" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDNMGbi5hN2zzzzR01P6vy3LiEx_JWIPx95yxNET0DjQTM1cUJiWd2wWimrEpTlnPXp7IQffT4HsrWSYDD3qtJo6O9EHwWZBR8Bkc_OYutnqCqn0H6bVsza14MAg7V4P-6Bsg1RS6tLPJH9Hj6Ywmqb1AClL7PqzZ14Pl1Vzy7NTuL1NPTvCm54qmyvBVFRAMcqGEqf8Vl3VatnMDC0_u1U3TvOopC2GY8wSaJpHfoTP2eSz1hyBzKoIb5TD6ljQsOdWdBCXzi7z-oi");'></div>
+<div class="flex flex-col justify-between py-1 flex-1">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="text-primary text-xs font-bold uppercase tracking-wider font-sans">Venture Capital</span>
+<span class="text-[#9ca3af] text-xs">•</span>
+<span class="text-[#616f89] dark:text-[#9aa0a6] text-xs font-medium font-sans">10 min read</span>
+</div>
+<h3 class="text-[#111318] dark:text-white text-xl md:text-2xl font-bold leading-tight mb-2 group-hover:text-primary transition-colors">
+                                                Startup Funding Report: Q3 2024 Analysis
+                                            </h3>
+<p class="text-[#4b5563] dark:text-[#9ca3af] text-base font-normal leading-relaxed line-clamp-2">
+                                                Despite economic headwinds, early-stage funding remains resilient while late-stage ventures face significant valuation corrections.
+                                            </p>
+</div>
+<div class="flex items-center mt-4 gap-2">
+<div class="size-6 rounded-full bg-cover bg-center" data-alt="Portrait of Sarah Jenkins" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDegVl7vz3tGevrI686fa2RCllB6oZ8eM-Szwrhi2mG0gxU1nMyvVQ8CvIrV8eSvBvdT29n2kjPNusugMTm24am6D8XGzbkgg-7XPy7Bxs_yXgdL7mtO4VnDFXgsrJBxsCGuOoN9gmuPossxj6LAovOSRBFUEuBy6TNw70lctVl27iJz2r5LZNc8FUVBR7fTkB9GcsveoRj8-1orMbqNGFtZbjGIiQKq45xIA4A_qfziCB0PPHaengU6OI9fmYGAe4jFELwNnVw6nY_");'></div>
+<span class="text-[#111318] dark:text-[#e2e8f0] text-sm font-medium font-sans">Sarah Jenkins</span>
+<span class="text-[#9ca3af] text-sm">•</span>
+<span class="text-[#616f89] dark:text-[#9aa0a6] text-sm font-normal font-sans">Oct 23, 2023</span>
+</div>
+</div>
+</article>
+<!-- Article Card 3 -->
+<article class="flex flex-col md:flex-row items-stretch gap-4 p-4 rounded-xl bg-white dark:bg-[#1a202c] border border-[#e5e7eb] dark:border-[#2a3441] shadow-sm hover:shadow-md transition-all group cursor-pointer">
+<div class="md:w-[240px] md:shrink-0 w-full aspect-video md:aspect-[4/3] rounded-lg bg-cover bg-center overflow-hidden" data-alt="Silhouette of a person standing in front of a large window" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCNUBaBH94d7hmZIMx88MYr_csU0P5Xti9n2ab7k5nNGq1e6VohP5mSzyaCOV-Qxw0_ZPgsaN-YYldutjeY-3LFcYJKtH_vwNOYtZLto4knLOb9SR5mZPK8WNeLjlxUqs8Uz_L16c7p-nPjK1iWdaBASJxZ8ekj9wOV-7_OfkkXnUvbRyDdELGV_92FYwCx8Cp0uKkYKWlvgLuUR1yyvVKc61lZxIRx27yEnNrj6DarzjlpUMHa9n8Q4Me1zJFO0U6RtJThJrx-HN-9");'></div>
+<div class="flex flex-col justify-between py-1 flex-1">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="text-primary text-xs font-bold uppercase tracking-wider font-sans">Executive Moves</span>
+<span class="text-[#9ca3af] text-xs">•</span>
+<span class="text-[#616f89] dark:text-[#9aa0a6] text-xs font-medium font-sans">8 min read</span>
+</div>
+<h3 class="text-[#111318] dark:text-white text-xl md:text-2xl font-bold leading-tight mb-2 group-hover:text-primary transition-colors">
+                                                Interview: CEO of Major Tech Giant Steps Down
+                                            </h3>
+<p class="text-[#4b5563] dark:text-[#9ca3af] text-base font-normal leading-relaxed line-clamp-2">
+                                                In a surprising announcement, the visionary leader discusses legacy, the future of the company, and the personal reasons behind the departure.
+                                            </p>
+</div>
+<div class="flex items-center mt-4 gap-2">
+<div class="size-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold">ET</div>
+<span class="text-[#111318] dark:text-[#e2e8f0] text-sm font-medium font-sans">Editorial Team</span>
+<span class="text-[#9ca3af] text-sm">•</span>
+<span class="text-[#616f89] dark:text-[#9aa0a6] text-sm font-normal font-sans">Oct 22, 2023</span>
+</div>
+</div>
+</article>
+<!-- Article Card 4 -->
+<article class="flex flex-col md:flex-row items-stretch gap-4 p-4 rounded-xl bg-white dark:bg-[#1a202c] border border-[#e5e7eb] dark:border-[#2a3441] shadow-sm hover:shadow-md transition-all group cursor-pointer">
+<div class="md:w-[240px] md:shrink-0 w-full aspect-video md:aspect-[4/3] rounded-lg bg-cover bg-center overflow-hidden" data-alt="Abstract digital network connections with glowing dots" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBFAR5LoE_naXsmw_JXwrP5a13_FhZW4InYZEuT35jlybdwR00ZrjIpwAvXZWbnIAAtWcRvM_9bjGW-pkG1lOECIYJS2jvs2coIXz_52f_khM0rmbcW8vaQ9lJz4TBACCdKsVyAvl-KeGpPFu0bPXlJeuB1y2X9KansT2TS8qHsaJPXPPNszha-cesQVrgUf5s6K__mOMhF5mSeLxo3ruvIOBs9_hZnLvZ0Jw8vdLz0PZFlukrocARJEQ1AuQb0CLQg_So8LOsRbW8v");'></div>
+<div class="flex flex-col justify-between py-1 flex-1">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="text-primary text-xs font-bold uppercase tracking-wider font-sans">Hardware</span>
+<span class="text-[#9ca3af] text-xs">•</span>
+<span class="text-[#616f89] dark:text-[#9aa0a6] text-xs font-medium font-sans">4 min read</span>
+</div>
+<h3 class="text-[#111318] dark:text-white text-xl md:text-2xl font-bold leading-tight mb-2 group-hover:text-primary transition-colors">
+                                                Next-Gen Processors: A Leap in Quantum Computing
+                                            </h3>
+<p class="text-[#4b5563] dark:text-[#9ca3af] text-base font-normal leading-relaxed line-clamp-2">
+                                                Researchers have achieved a breakthrough in stability at room temperature, potentially accelerating the timeline for commercial quantum computers.
+                                            </p>
+</div>
+<div class="flex items-center mt-4 gap-2">
+<div class="size-6 rounded-full bg-cover bg-center" data-alt="Portrait of David Chen" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDkyW0CA9JgLNeJO34uMm8sL2yHtx1oFYjExduxPh6OZMCbMOdLjU0gKGHJt2F-yqsPITSLmK8aJz1-3MhhwFjc-FNwUDaF5Ewuxhz4dcr2rReLqEZKHZPEr2e8ohTfqxG8UTD80jmp-mPM8ken67OM8C_CnuvaFokILjtPCpC9mZQcUJfaRZ8z_c9-mrybOvg2yxmSo2sv8H82hiQmXRGSc-k3RJYWdxxGNXNcuuNoLwok06VC3cgOApErP81QGL9YXttq0b6MbR0G");'></div>
+<span class="text-[#111318] dark:text-[#e2e8f0] text-sm font-medium font-sans">David Chen</span>
+<span class="text-[#9ca3af] text-sm">•</span>
+<span class="text-[#616f89] dark:text-[#9aa0a6] text-sm font-normal font-sans">Oct 21, 2023</span>
+</div>
+</div>
+</article>
+</div>
+<!-- Pagination -->
+<div class="flex items-center justify-center py-8">
+<button class="flex items-center gap-2 px-6 py-3 rounded-lg bg-white dark:bg-[#1a202c] border border-[#e5e7eb] dark:border-[#2a3441] text-[#111318] dark:text-white font-bold text-sm shadow-sm hover:bg-gray-50 dark:hover:bg-[#2d3748] transition-colors w-full md:w-auto justify-center">
+<span class="material-symbols-outlined">refresh</span>
+<span class="font-sans">Load More Articles</span>
+</button>
+</div>
+</main>
+<!-- Sidebar Right Rail -->
+<aside class="lg:col-span-4 space-y-8">
+<!-- Trending Section -->
+<div class="rounded-xl bg-white dark:bg-[#1a202c] border border-[#e5e7eb] dark:border-[#2a3441] p-6 shadow-sm">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary">trending_up</span>
+<h3 class="text-lg font-bold text-[#111318] dark:text-white">Trending in Tech</h3>
+</div>
+<div class="flex flex-col divide-y divide-[#f0f2f4] dark:divide-[#2a3441]">
+<a class="py-3 group" href="#">
+<span class="text-xs text-[#616f89] dark:text-[#9aa0a6] font-sans mb-1 block">01</span>
+<h4 class="text-base font-bold text-[#111318] dark:text-[#f0f2f4] leading-snug group-hover:text-primary transition-colors">
+                                            Why Silicon Valley is investing billions in Fusion Energy
+                                        </h4>
+</a>
+<a class="py-3 group" href="#">
+<span class="text-xs text-[#616f89] dark:text-[#9aa0a6] font-sans mb-1 block">02</span>
+<h4 class="text-base font-bold text-[#111318] dark:text-[#f0f2f4] leading-snug group-hover:text-primary transition-colors">
+                                            The subtle art of scaling a SaaS company in 2024
+                                        </h4>
+</a>
+<a class="py-3 group" href="#">
+<span class="text-xs text-[#616f89] dark:text-[#9aa0a6] font-sans mb-1 block">03</span>
+<h4 class="text-base font-bold text-[#111318] dark:text-[#f0f2f4] leading-snug group-hover:text-primary transition-colors">
+                                            Big Tech regulation: What the new EU laws mean for you
+                                        </h4>
+</a>
+<a class="py-3 group" href="#">
+<span class="text-xs text-[#616f89] dark:text-[#9aa0a6] font-sans mb-1 block">04</span>
+<h4 class="text-base font-bold text-[#111318] dark:text-[#f0f2f4] leading-snug group-hover:text-primary transition-colors">
+                                            Opinion: Remote work is here to stay, despite RTO mandates
+                                        </h4>
+</a>
+<a class="py-3 group" href="#">
+<span class="text-xs text-[#616f89] dark:text-[#9aa0a6] font-sans mb-1 block">05</span>
+<h4 class="text-base font-bold text-[#111318] dark:text-[#f0f2f4] leading-snug group-hover:text-primary transition-colors">
+                                            Crypto winter or thaw? Market indicators to watch
+                                        </h4>
+</a>
+</div>
+</div>
+<!-- Newsletter Widget -->
+<div class="rounded-xl bg-primary/5 dark:bg-[#1a202c] border border-primary/20 dark:border-[#2a3441] p-6 shadow-sm">
+<h3 class="text-xl font-bold text-[#111318] dark:text-white mb-2">Daily Briefing</h3>
+<p class="text-[#616f89] dark:text-[#9aa0a6] text-sm mb-4 leading-relaxed">
+                                    Get the most important tech news and analysis delivered to your inbox every morning.
+                                </p>
+<form class="flex flex-col gap-3">
+<input class="w-full h-10 px-3 rounded-lg border border-[#d1d5db] dark:border-[#4b5563] bg-white dark:bg-[#2d3748] text-[#111318] dark:text-white placeholder:text-[#9ca3af] focus:ring-1 focus:ring-primary focus:border-primary outline-none font-sans text-sm" placeholder="Your work email" type="email"/>
+<button class="w-full h-10 rounded-lg bg-primary text-white font-bold text-sm shadow-md hover:bg-blue-700 transition-colors font-sans" type="button">
+                                        Subscribe Free
+                                    </button>
+</form>
+<p class="text-[10px] text-[#9ca3af] mt-3 text-center">
+                                    By subscribing, you agree to our Terms of Service and Privacy Policy.
+                                </p>
+</div>
+<!-- Topics Cloud -->
+<div class="rounded-xl bg-white dark:bg-[#1a202c] border border-[#e5e7eb] dark:border-[#2a3441] p-6 shadow-sm">
+<h3 class="text-sm font-bold text-[#616f89] dark:text-[#9aa0a6] uppercase tracking-wider mb-4 font-sans">Popular Topics</h3>
+<div class="flex flex-wrap gap-2">
+<a class="px-3 py-1.5 rounded-full bg-[#f0f2f4] dark:bg-[#2d3748] text-[#111318] dark:text-[#e2e8f0] text-sm font-medium hover:bg-[#e2e8f0] dark:hover:bg-[#4a5568] transition-colors font-sans" href="#">Artificial Intelligence</a>
+<a class="px-3 py-1.5 rounded-full bg-[#f0f2f4] dark:bg-[#2d3748] text-[#111318] dark:text-[#e2e8f0] text-sm font-medium hover:bg-[#e2e8f0] dark:hover:bg-[#4a5568] transition-colors font-sans" href="#">Fintech</a>
+<a class="px-3 py-1.5 rounded-full bg-[#f0f2f4] dark:bg-[#2d3748] text-[#111318] dark:text-[#e2e8f0] text-sm font-medium hover:bg-[#e2e8f0] dark:hover:bg-[#4a5568] transition-colors font-sans" href="#">Cybersecurity</a>
+<a class="px-3 py-1.5 rounded-full bg-[#f0f2f4] dark:bg-[#2d3748] text-[#111318] dark:text-[#e2e8f0] text-sm font-medium hover:bg-[#e2e8f0] dark:hover:bg-[#4a5568] transition-colors font-sans" href="#">Cloud Computing</a>
+<a class="px-3 py-1.5 rounded-full bg-[#f0f2f4] dark:bg-[#2d3748] text-[#111318] dark:text-[#e2e8f0] text-sm font-medium hover:bg-[#e2e8f0] dark:hover:bg-[#4a5568] transition-colors font-sans" href="#">Big Data</a>
+<a class="px-3 py-1.5 rounded-full bg-[#f0f2f4] dark:bg-[#2d3748] text-[#111318] dark:text-[#e2e8f0] text-sm font-medium hover:bg-[#e2e8f0] dark:hover:bg-[#4a5568] transition-colors font-sans" href="#">Startups</a>
+</div>
+</div>
+</aside>
+</div>
+<!-- Footer Simplified -->
+<footer class="mt-20 border-t border-[#e5e7eb] dark:border-[#2a3441] py-10 px-4">
+<div class="flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-2">
+<div class="size-6 text-primary">
+<svg class="h-full w-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M39.475 21.6262C40.358 21.4363 40.6863 21.5589 40.7581 21.5934C40.7876 21.655 40.8547 21.857 40.8082 22.3336C40.7408 23.0255 40.4502 24.0046 39.8572 25.2301C38.6799 27.6631 36.5085 30.6631 33.5858 33.5858C30.6631 36.5085 27.6632 38.6799 25.2301 39.8572C24.0046 40.4502 23.0255 40.7407 22.3336 40.8082C21.8571 40.8547 21.6551 40.7875 21.5934 40.7581C21.5589 40.6863 21.4363 40.358 21.6262 39.475C21.8562 38.4054 22.4689 36.9657 23.5038 35.2817C24.7575 33.2417 26.5497 30.9744 28.7621 28.762C30.9744 26.5497 33.2417 24.7574 35.2817 23.5037C36.9657 22.4689 38.4054 21.8562 39.475 21.6262ZM4.41189 29.2403L18.7597 43.5881C19.8813 44.7097 21.4027 44.9179 22.7217 44.7893C24.0585 44.659 25.5148 44.1631 26.9723 43.4579C29.9052 42.0387 33.2618 39.5667 36.4142 36.4142C39.5667 33.2618 42.0387 29.9052 43.4579 26.9723C44.1631 25.5148 44.659 24.0585 44.7893 22.7217C44.9179 21.4027 44.7097 19.8813 43.5881 18.7597L29.2403 4.41187C27.8527 3.02428 25.8765 3.02573 24.2861 3.36776C22.6081 3.72863 20.7334 4.58419 18.8396 5.74801C16.4978 7.18716 13.9881 9.18353 11.5858 11.5858C9.18354 13.988 7.18717 16.4978 5.74802 18.8396C4.58421 20.7334 3.72865 22.6081 3.36778 24.2861C3.02574 25.8765 3.02429 27.8527 4.41189 29.2403Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<span class="font-bold text-[#111318] dark:text-white">Business News</span>
+</div>
+<div class="flex gap-6">
+<a class="text-sm text-[#616f89] dark:text-[#9aa0a6] hover:text-primary" href="#">About</a>
+<a class="text-sm text-[#616f89] dark:text-[#9aa0a6] hover:text-primary" href="#">Careers</a>
+<a class="text-sm text-[#616f89] dark:text-[#9aa0a6] hover:text-primary" href="#">Privacy</a>
+<a class="text-sm text-[#616f89] dark:text-[#9aa0a6] hover:text-primary" href="#">Terms</a>
+</div>
+<div class="text-sm text-[#9ca3af]">
+                                © 2024 Business News Media. All rights reserved.
+                            </div>
+</div>
+</footer>
+</div>
+</div>
+</div>
+</div>
+</body></html>

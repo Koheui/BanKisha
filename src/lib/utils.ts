@@ -11,7 +11,16 @@ export function formatDuration(seconds: number): string {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
 }
 
-export function formatDate(date: Date): string {
+export function formatDate(date: Date | undefined, format?: string): string {
+  if (!date) return '-'
+
+  if (format === 'MM-dd') {
+    return new Intl.DateTimeFormat('ja-JP', {
+      month: '2-digit',
+      day: '2-digit'
+    }).format(date).replace(/\//g, '-')
+  }
+
   return new Intl.DateTimeFormat('ja-JP', {
     year: 'numeric',
     month: 'long',

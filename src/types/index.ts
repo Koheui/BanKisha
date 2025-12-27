@@ -229,6 +229,7 @@ export interface InterviewSession {
   intervieweeCompanyInfo?: IntervieweeCompanyInfo // 取材先が入力した会社・サービス情報（サービス名、会社名、住所、URL、カスタム項目）
   questions?: string // 生成された質問事項（編集可能）
   openingMessage?: string // 生成されたオープニングメッセージ
+  mediaName?: string // オープニングで使用する表示名（メディア名等）
   knowledgeBaseIds?: string[] // 使用するナレ-ジベースのIDリスト
   interviewerVoiceType?: GeminiVoiceType // インタビュアーの音声タイプ
   interviewerSpeed?: number // インタビュアーの音声速度
@@ -276,5 +277,18 @@ export interface SystemSettings {
     updatedAt: Date
     updatedBy: string
   }
+}
+
+// Comment types
+export interface Comment {
+  id: string
+  articleId: string
+  userId: string
+  content: string
+  author: {
+    displayName: string
+    photoURL?: string
+  }
+  createdAt: Date
 }
 

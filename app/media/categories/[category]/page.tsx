@@ -3,6 +3,9 @@ import { CategoryArticles } from '@/components/media/CategoryArticles'
 import { LoaderIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Metadata } from 'next'
+import { getArticles } from '@/src/lib/firestore'
+
+export const dynamic = 'force-dynamic'
 
 interface CategoryPageProps {
   params: Promise<{
@@ -23,11 +26,12 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
 export default async function MediaCategoryPage({ params }: CategoryPageProps) {
   const { category } = await params
   const decodedCategory = decodeURIComponent(category)
+  const articles = await getArticles({ status: 'public', category: decodedCategory })
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2 font-display">
           {decodedCategory}
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
@@ -45,7 +49,7 @@ export default async function MediaCategoryPage({ params }: CategoryPageProps) {
           </Card>
         }
       >
-        <CategoryArticles category={decodedCategory} />
+        <CategoryArticles articles={articles} />
       </Suspense>
     </div>
   )
