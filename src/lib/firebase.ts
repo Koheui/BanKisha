@@ -1,5 +1,4 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app'
-import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth'
 import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore'
 import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage'
 
@@ -14,15 +13,15 @@ const firebaseConfig = {
 
 // Firebase初期化（遅延初期化）
 let app: FirebaseApp | null = null
-let authInstance: Auth | null = null
 let dbInstance: Firestore | null = null
 let storageInstance: FirebaseStorage | null = null
 
 function initializeFirebase() {
   const phase = typeof process !== 'undefined' ? process.env.NEXT_PHASE : 'unknown'
+  const isBuildPhase = phase === 'phase-production-build'
 
   // ビルド時は初期化をスキップ
-  if (phase === 'phase-production-build') {
+  if (isBuildPhase) {
     return null
   }
 
@@ -40,7 +39,6 @@ function initializeFirebase() {
 
       if (app) {
         try {
-          authInstance = getAuth(app)
           dbInstance = getFirestore(app)
           storageInstance = getStorage(app)
         } catch (serviceError) {
@@ -58,7 +56,7 @@ function initializeFirebase() {
       }
     }
   } catch (error) {
-    if (phase !== 'phase-production-build') {
+    if (!isBuildPhase) {
       console.error('❌ Firebase initialization failed:', error)
     }
   }
@@ -67,12 +65,10 @@ function initializeFirebase() {
 }
 
 // 実行時に初期化（ビルド時はスキップ）
-// ビルド時は初期化を試みない
 if (typeof process === 'undefined' || process.env.NEXT_PHASE !== 'phase-production-build') {
   try {
     initializeFirebase()
   } catch (error) {
-    // ビルド時はエラーを無視
     if (process.env.NEXT_PHASE !== 'phase-production-build') {
       console.warn('⚠️ Firebase initialization error:', error)
     }
@@ -80,27 +76,10 @@ if (typeof process === 'undefined' || process.env.NEXT_PHASE !== 'phase-producti
 }
 
 // ゲッター関数（実行時に初期化を保証）
-function getAuthInstance(): Auth {
-  if (!authInstance) {
-    const initializedApp = initializeFirebase()
-    if (!initializedApp) {
-      throw new Error('Firebase app not initialized. Please check your environment variables.')
-    }
-    if (!app) {
-      throw new Error('Firebase app not initialized. Please check your environment variables.')
-    }
-    authInstance = getAuth(app)
-  }
-  return authInstance
-}
-
 function getDbInstance(): Firestore {
   if (!dbInstance) {
     const initializedApp = initializeFirebase()
-    if (!initializedApp) {
-      throw new Error('Firebase app not initialized. Please check your environment variables.')
-    }
-    if (!app) {
+    if (!initializedApp || !app) {
       throw new Error('Firebase app not initialized. Please check your environment variables.')
     }
     dbInstance = getFirestore(app)
@@ -111,10 +90,7 @@ function getDbInstance(): Firestore {
 function getStorageInstance(): FirebaseStorage {
   if (!storageInstance) {
     const initializedApp = initializeFirebase()
-    if (!initializedApp) {
-      throw new Error('Firebase app not initialized. Please check your environment variables.')
-    }
-    if (!app) {
+    if (!initializedApp || !app) {
       throw new Error('Firebase app not initialized. Please check your environment variables.')
     }
     storageInstance = getStorage(app)
@@ -122,12 +98,7 @@ function getStorageInstance(): FirebaseStorage {
   return storageInstance
 }
 
-// エクスポート（ビルド時は初期化されないが、実行時は確実に初期化される）
-// 型安全性のため、ゲッター関数を使用（名前衝突を避けるため、別名でエクスポート）
-export function getFirebaseAuth() {
-  return getAuthInstance()
-}
-
+// エクスポート
 export function getFirebaseDb() {
   return getDbInstance()
 }
@@ -136,23 +107,17 @@ export function getFirebaseStorage() {
   return getStorageInstance()
 }
 
-// 後方互換性のため、直接エクスポート（実行時に初期化される）
-// ビルド時はundefinedの可能性があるため、使用時はgetFirebaseDb()などを推奨
-export const auth = authInstance || undefined
+// 後方互換性のため
 export const db = dbInstance || undefined
 export const storage = storageInstance || undefined
 
-// 実行時に確実に初期化されるゲッター関数（推奨）
-export { getAuthInstance, getDbInstance, getStorageInstance }
+export { getDbInstance, getStorageInstance }
 
-// Connect to emulators in development (only if explicitly enabled)
-// ビルド時はスキップ
-if (typeof process !== 'undefined' && process.env.NEXT_PHASE !== 'phase-production-build') {
-  if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
+// Connect to emulators in development
+if (typeof process !== 'undefined') {
+  const phase = process.env.NEXT_PHASE
+  if (phase !== 'phase-production-build' && process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
     try {
-      if (authInstance) {
-        connectAuthEmulator(authInstance, 'http://localhost:9099', { disableWarnings: true })
-      }
       if (dbInstance) {
         connectFirestoreEmulator(dbInstance, 'localhost', 8080)
       }
@@ -160,7 +125,6 @@ if (typeof process !== 'undefined' && process.env.NEXT_PHASE !== 'phase-producti
         connectStorageEmulator(storageInstance, 'localhost', 9199)
       }
     } catch (error) {
-      // Emulators already connected or not available
       console.log('Firebase emulators not available or already connected')
     }
   }

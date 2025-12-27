@@ -4,7 +4,7 @@ import { updateUser } from '@/src/lib/firestore'
 
 export async function POST(request: Request) {
   try {
-    const { userId } = auth()
+    const { userId } = await auth()
     if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 })
     }

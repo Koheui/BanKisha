@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { auth } from '@clerk/nextjs/server'
 import * as admin from 'firebase-admin'
 import { initializeFirebaseAdmin, adminDebug } from '@/src/lib/firebase-admin'
 
@@ -12,17 +13,9 @@ export async function POST(request: NextRequest) {
     const adminDb = app.firestore()
 
     // 認証チェック
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const { userId } = await auth()
+    if (!userId) {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
-    }
-
-    const idToken = authHeader.split('Bearer ')[1]
-    let decodedToken: admin.auth.DecodedIdToken
-    try {
-      decodedToken = await admin.auth().verifyIdToken(idToken)
-    } catch (error) {
-      return NextResponse.json({ error: '認証に失敗しました' }, { status: 401 })
     }
 
     const body = await request.json()
@@ -122,7 +115,7 @@ export async function POST(request: NextRequest) {
           const kbDoc = await adminDb.collection('knowledgeBases').doc(id).get()
           if (!kbDoc.exists) return null
           const kbData = kbDoc.data()
-          if (!kbData || kbData.uploadedBy !== decodedToken.uid) return null // 自分のもの以外は拒否
+          if (!kbData || kbData.uploadedBy !== userId) return null // 自分のもの以外は拒否
 
           const chunks = await adminDb.collection('knowledgeBases').doc(id).collection('chunks').limit(50).get()
           return {

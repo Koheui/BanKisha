@@ -1,35 +1,14 @@
 
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import * as admin from 'firebase-admin'
 import { initializeFirebaseAdmin } from '@/src/lib/firebase-admin'
 
-async function getAuthenticatedUser(req: NextRequest): Promise<admin.auth.DecodedIdToken | null> {
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader) {
-    console.warn('No Authorization header found')
-    return null
-  }
-
-  const token = authHeader.split('Bearer ')[1]
-  if (!token) {
-    console.warn('No token found in Authorization header')
-    return null
-  }
-
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(token)
-    return decodedToken
-  } catch (error) {
-    console.error('Error verifying ID token:', error)
-    return null
-  }
-}
-
 export async function POST(req: NextRequest) {
   await initializeFirebaseAdmin()
-  const user = await getAuthenticatedUser(req)
 
-  if (!user) {
+  const { userId } = await auth()
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -52,14 +31,14 @@ export async function POST(req: NextRequest) {
         const newCompanyRef = await companiesRef.add({
           name: companyName.trim(),
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          owner: user.uid,
+          owner: userId,
         })
         companyId = newCompanyRef.id
       }
     }
 
     // Update user document
-    const userRef = db.collection('users').doc(user.uid)
+    const userRef = db.collection('users').doc(userId)
     const userDataToUpdate: { [key: string]: any } = {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }

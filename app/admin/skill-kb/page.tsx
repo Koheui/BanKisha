@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { getFirebaseAuth, getFirebaseDb, getFirebaseStorage } from '@/src/lib/firebase'
+import { getFirebaseDb, getFirebaseStorage } from '@/src/lib/firebase'
 import { collection, query, where, getDocs, deleteDoc, doc, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { KnowledgeBase } from '@/src/types'
@@ -41,7 +41,7 @@ export default function SkillKBPage() {
   const [feedbackMode, setFeedbackMode] = useState<'add' | 'modify' | 'remove'>('add')
   const [isEditOnly, setIsEditOnly] = useState(false) // 編集時のみ使用するフラグ
   const [regenerating, setRegenerating] = useState(false)
-  const [showHistory, setShowHistory] = useState<{kbId: string, type: 'summary' | 'usageGuide'} | null>(null)
+  const [showHistory, setShowHistory] = useState<{ kbId: string, type: 'summary' | 'usageGuide' } | null>(null)
 
   console.log(`🚀 [SkillKB] Version: ${COMPONENT_VERSION}`)
 
@@ -109,13 +109,9 @@ export default function SkillKBPage() {
       setUploading(true)
       setUploadProgress(0)
 
-      const firebaseAuth = getFirebaseAuth()
-      const currentUser = firebaseAuth.currentUser
-      if (!currentUser) {
+      if (!user) {
         throw new Error('ログインが必要です')
       }
-
-      const idToken = await currentUser.getIdToken()
 
       // ファイル名をエンコード
       const timestamp = Date.now()
@@ -156,8 +152,7 @@ export default function SkillKBPage() {
             const response = await fetch('/api/knowledge-base/create', {
               method: 'POST',
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify({
                 type: 'skill',
@@ -286,13 +281,10 @@ export default function SkillKBPage() {
     try {
       setRegenerating(true)
 
-      const firebaseAuth = getFirebaseAuth()
-      const idToken = await firebaseAuth.currentUser?.getIdToken()
       const response = await fetch('/api/knowledge-base/restore', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           knowledgeBaseId: kb.id,
@@ -327,13 +319,10 @@ export default function SkillKBPage() {
     try {
       setRegenerating(true)
 
-      const firebaseAuth = getFirebaseAuth()
-      const idToken = await firebaseAuth.currentUser?.getIdToken()
       const response = await fetch('/api/knowledge-base/regenerate', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           knowledgeBaseId: kb.id,
@@ -606,7 +595,7 @@ export default function SkillKBPage() {
                                 <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mb-3">
                                   {kb.summary}
                                 </p>
-                                
+
                                 {/* 履歴表示 */}
                                 {kb.summaryHistory && kb.summaryHistory.length > 0 && (
                                   <div className="mt-2 mb-3">
@@ -656,7 +645,7 @@ export default function SkillKBPage() {
                                     )}
                                   </div>
                                 )}
-                                
+
                                 {feedbackKbId === kb.id && feedbackContentType === 'summary' ? (
                                   <div className="space-y-3">
                                     <div className="flex items-center gap-2">
@@ -678,11 +667,11 @@ export default function SkillKBPage() {
                                       onChange={(e) => setFeedback(e.target.value)}
                                       rows={3}
                                       placeholder={
-                                        feedbackMode === 'add' 
-                                          ? '追加したい観点を入力（例：ビジネス向けの観点も含めて）' 
-                                          : feedbackMode === 'modify' 
-                                          ? '修正したい部分を指定（例：〇〇の部分をもっと具体的に）' 
-                                          : '削除したい部分を指定（例：〇〇の説明は不要）'
+                                        feedbackMode === 'add'
+                                          ? '追加したい観点を入力（例：ビジネス向けの観点も含めて）'
+                                          : feedbackMode === 'modify'
+                                            ? '修正したい部分を指定（例：〇〇の部分をもっと具体的に）'
+                                            : '削除したい部分を指定（例：〇〇の説明は不要）'
                                       }
                                       className="w-full text-sm text-gray-700 dark:text-gray-300 border border-blue-300 dark:border-blue-600 rounded p-2 bg-white dark:bg-gray-800"
                                     />
@@ -731,7 +720,7 @@ export default function SkillKBPage() {
                                 <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mb-3">
                                   {kb.usageGuide}
                                 </p>
-                                
+
                                 {/* 履歴表示 */}
                                 {kb.usageGuideHistory && kb.usageGuideHistory.length > 0 && (
                                   <div className="mt-2 mb-3">
@@ -781,7 +770,7 @@ export default function SkillKBPage() {
                                     )}
                                   </div>
                                 )}
-                                
+
                                 {feedbackKbId === kb.id && feedbackContentType === 'usageGuide' ? (
                                   <div className="space-y-3">
                                     <div className="flex items-center gap-2">
@@ -814,11 +803,11 @@ export default function SkillKBPage() {
                                       onChange={(e) => setFeedback(e.target.value)}
                                       rows={3}
                                       placeholder={
-                                        feedbackMode === 'add' 
-                                          ? '追加したい活用シーンを入力（例：営業シーンでの活用例も）' 
-                                          : feedbackMode === 'modify' 
-                                          ? '修正したい部分を指定（例：質問例をもっと具体的に）' 
-                                          : '削除したい部分を指定（例：〇〇の活用例は不要）'
+                                        feedbackMode === 'add'
+                                          ? '追加したい活用シーンを入力（例：営業シーンでの活用例も）'
+                                          : feedbackMode === 'modify'
+                                            ? '修正したい部分を指定（例：質問例をもっと具体的に）'
+                                            : '削除したい部分を指定（例：〇〇の活用例は不要）'
                                       }
                                       className="w-full text-sm text-gray-700 dark:text-gray-300 border border-green-300 dark:border-green-600 rounded p-2 bg-white dark:bg-gray-800"
                                     />

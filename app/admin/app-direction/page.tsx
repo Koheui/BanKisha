@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { getFirebaseAuth, getFirebaseDb } from '@/src/lib/firebase'
+import { getFirebaseDb } from '@/src/lib/firebase'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import Link from 'next/link'
 import { ArrowLeftIcon, CompassIcon, SaveIcon } from 'lucide-react'
@@ -30,7 +30,7 @@ export default function AppDirectionPage() {
         const firestoreDb = getFirebaseDb()
         const settingsRef = doc(firestoreDb, 'systemSettings', 'appDirection')
         const settingsDoc = await getDoc(settingsRef)
-        
+
         if (settingsDoc.exists()) {
           const data = settingsDoc.data()
           setDirectionPrompt(data.directionPrompt || '')
@@ -50,20 +50,18 @@ export default function AppDirectionPage() {
   const handleSave = async () => {
     try {
       setSaving(true)
-      const firebaseAuth = getFirebaseAuth()
-      const currentUser = firebaseAuth.currentUser
-      if (!currentUser) {
+      if (!user) {
         throw new Error('ログインが必要です')
       }
-      
+
       const firestoreDb = getFirebaseDb()
       const settingsRef = doc(firestoreDb, 'systemSettings', 'appDirection')
       await setDoc(settingsRef, {
         directionPrompt: directionPrompt.trim(),
         updatedAt: serverTimestamp(),
-        updatedBy: currentUser.uid
+        updatedBy: user.uid
       }, { merge: true })
-      
+
       alert('✅ 保存しました')
     } catch (error: any) {
       console.error('Error saving:', error)
@@ -101,7 +99,7 @@ export default function AppDirectionPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link 
+              <Link
                 href="/dashboard"
                 className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
               >
@@ -147,8 +145,8 @@ export default function AppDirectionPage() {
 
           <div className="space-y-4">
             <div>
-              <label 
-                htmlFor="direction-prompt-textarea" 
+              <label
+                htmlFor="direction-prompt-textarea"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
                 方向性プロンプト

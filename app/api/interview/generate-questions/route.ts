@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { auth } from '@clerk/nextjs/server'
 import * as admin from 'firebase-admin'
 import { initializeFirebaseAdmin } from '@/src/lib/firebase-admin'
 
@@ -11,20 +12,10 @@ export async function POST(request: NextRequest) {
     const adminDb = admin.firestore()
     console.log('📥 [API] Received generate questions request')
 
-    currentStep = 'Authorization Header'
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // 認証チェック
+    const { userId } = await auth()
+    if (!userId) {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
-    }
-
-    currentStep = 'Decode Token'
-    const idToken = authHeader.split('Bearer ')[1]
-    let decodedToken: admin.auth.DecodedIdToken
-    try {
-      decodedToken = await admin.auth().verifyIdToken(idToken)
-    } catch (error) {
-      console.error('❌ Auth Error:', error)
-      return NextResponse.json({ error: '認証に失敗しました', details: error instanceof Error ? error.message : 'Unknown' }, { status: 401 })
     }
 
     currentStep = 'Parse Body'
@@ -109,7 +100,7 @@ export async function POST(request: NextRequest) {
             const kbData = kbDoc.data()
 
             // スコープの確認（アップロード者が一致するか）
-            if (kbData?.uploadedBy !== decodedToken.uid) {
+            if (kbData?.uploadedBy !== userId) {
               console.warn(`⚠️ Access denied to KB ${kbId}`)
               return null
             }

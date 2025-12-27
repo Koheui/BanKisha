@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { getFirebaseDb, getFirebaseAuth } from '@/src/lib/firebase'
+import { getFirebaseDb } from '@/src/lib/firebase'
 import { collection, addDoc, updateDoc, serverTimestamp, query, where, getDocs, orderBy, doc, getDoc, setDoc } from 'firebase/firestore'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -353,10 +353,7 @@ function NewInterviewPageContent() {
       setLoadingQuestions(true)
       setShowQuestionGeneration(true)
 
-      const firebaseAuth = getFirebaseAuth()
-      const currentUser = firebaseAuth.currentUser
-      if (!currentUser) throw new Error('ログインが必要です')
-      const idToken = await currentUser.getIdToken()
+      if (!user) throw new Error('ログインが必要です')
 
       // ユーザーナレッジベースのみを送信
       const knowledgeBaseIds = selectedKBIds
@@ -364,8 +361,7 @@ function NewInterviewPageContent() {
       const response = await fetch('/api/interview/generate-questions', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           interviewId: interviewId,

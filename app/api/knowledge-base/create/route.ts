@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import * as admin from 'firebase-admin'
 import { initializeFirebaseAdmin } from '@/src/lib/firebase-admin'
 
@@ -9,26 +10,12 @@ export async function POST(request: NextRequest) {
     const db = admin.firestore()
     console.log('📥 [API] Received knowledge base create request')
 
-    // Authorization check
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('❌ [API] No authorization header')
+    // 認証チェック
+    const { userId } = await auth()
+    if (!userId) {
+      console.error('❌ [API] No authorization header or session')
       return NextResponse.json(
         { error: '認証が必要です' },
-        { status: 401 }
-      )
-    }
-
-    const idToken = authHeader.split('Bearer ')[1]
-    let decodedToken: admin.auth.DecodedIdToken
-
-    try {
-      decodedToken = await admin.auth().verifyIdToken(idToken)
-      console.log('✅ [API] Token verified:', decodedToken.uid)
-    } catch (error) {
-      console.error('❌ [API] Token verification failed:', error)
-      return NextResponse.json(
-        { error: '認証に失敗しました' },
         { status: 401 }
       )
     }
@@ -49,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     // Check permissions: only superAdmin can upload skill/info
     if (type === 'skill' || type === 'info') {
-      const userDoc = await db.collection('users').doc(decodedToken.uid).get()
+      const userDoc = await db.collection('users').doc(userId).get()
       const userData = userDoc.data()
 
       if (!userData || userData.role !== 'superAdmin') {
@@ -68,7 +55,7 @@ export async function POST(request: NextRequest) {
       fileSize,
       storageUrl,
       storagePath,
-      uploadedBy: decodedToken.uid,
+      uploadedBy: userId,
       status: 'processing',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()

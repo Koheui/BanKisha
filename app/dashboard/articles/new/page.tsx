@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { getFirebaseDb, getFirebaseAuth } from '@/src/lib/firebase'
+import { getFirebaseDb } from '@/src/lib/firebase'
 import { doc, getDoc, collection, getDocs, orderBy, query, Timestamp } from 'firebase/firestore'
 import { createArticle, migrateInterviewMessages } from '@/src/lib/firestore'
 import { generateSlug, ensureUniqueSlug } from '@/src/lib/slug-utils'
@@ -149,17 +149,10 @@ function NewArticlePageContent() {
         return
       }
 
-      // 認証トークンの取得
-      const idToken = await getFirebaseAuth().currentUser?.getIdToken()
-      if (!idToken) {
-        throw new Error('認証トークンの取得に失敗しました。再ログインをお試しください。')
-      }
-
       const response = await fetch('/api/article/generate-draft', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           interviewId: interview.id,
@@ -282,18 +275,11 @@ function NewArticlePageContent() {
         return
       }
 
-      // 認証トークンの取得
-      const idToken = await getFirebaseAuth().currentUser?.getIdToken()
-      if (!idToken) {
-        throw new Error('認証トークンの取得に失敗しました。再ログインをお試しください。')
-      }
-
       // フィードバックを反映した敲きを再生成
       const response = await fetch('/api/article/generate-draft', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           interviewId: interview?.id,

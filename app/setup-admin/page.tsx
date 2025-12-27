@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { getAuth } from 'firebase/auth'
+import { useAuth } from '@/components/auth/AuthProvider'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { getFirebaseDb } from '@/src/lib/firebase'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
 export default function SetupAdminPage() {
+  const { user } = useAuth()
   const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
   const [userInfo, setUserInfo] = useState<any>(null)
@@ -17,9 +18,6 @@ export default function SetupAdminPage() {
     setMessage('処理中...')
 
     try {
-      const auth = getAuth()
-      const user = auth.currentUser
-
       if (!user) {
         setStatus('error')
         setMessage('❌ ログインしてください')
@@ -85,13 +83,12 @@ export default function SetupAdminPage() {
           {/* ステータス表示 */}
           {message && (
             <div
-              className={`p-6 rounded-lg text-center text-lg font-bold ${
-                status === 'success'
+              className={`p-6 rounded-lg text-center text-lg font-bold ${status === 'success'
                   ? 'bg-green-500/20 border-2 border-green-500 text-green-300'
                   : status === 'error'
-                  ? 'bg-red-500/20 border-2 border-red-500 text-red-300'
-                  : 'bg-blue-500/20 border-2 border-blue-500 text-blue-300'
-              }`}
+                    ? 'bg-red-500/20 border-2 border-red-500 text-red-300'
+                    : 'bg-blue-500/20 border-2 border-blue-500 text-blue-300'
+                }`}
             >
               {message}
             </div>

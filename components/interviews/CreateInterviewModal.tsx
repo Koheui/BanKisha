@@ -95,7 +95,7 @@ const GENRE_CATEGORIES = [
 
 export function CreateInterviewModal({ isOpen, onClose, onComplete }: CreateInterviewModalProps) {
     const router = useRouter()
-    const { user, firebaseUser } = useAuth()
+    const { user } = useAuth()
     const [currentStep, setCurrentStep] = useState(0)
     const [loading, setLoading] = useState(false)
     const [interviewId, setInterviewId] = useState<string | null>(null)
@@ -231,15 +231,13 @@ export function CreateInterviewModal({ isOpen, onClose, onComplete }: CreateInte
             const controller = new AbortController()
             const timeoutId = setTimeout(() => controller.abort("Timeout"), 90000) // 90秒に延長
 
-            const idToken = firebaseUser ? await firebaseUser.getIdToken() : null
-            const headers: any = { "Content-Type": "application/json" }
-            if (idToken) headers.Authorization = `Bearer ${idToken}`
+            if (!user) throw new Error('ログインが必要です')
 
             const selectedInterviewer = interviewers.find(i => i.id === selectedInterviewerId)
 
             const response = await fetch("/api/interview/generate-questions", {
                 method: "POST",
-                headers,
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     title: title,
                     category: genre === "custom" ? customGenre : genre,
@@ -638,7 +636,7 @@ export function CreateInterviewModal({ isOpen, onClose, onComplete }: CreateInte
                                     <div className="bg-background p-3 rounded-md text-sm whitespace-pre-wrap">
                                         {openingTemplate
                                             .replace(/\[アカウント名\]/g, user?.companyId ? (user?.companyId) : 'BanKisha')
-                                            .replace(/\[インタビュアー名\]/g, interviewers.find(i=>i.id===selectedInterviewerId)?.name || '')
+                                            .replace(/\[インタビュアー名\]/g, interviewers.find(i => i.id === selectedInterviewerId)?.name || '')
                                             .replace(/\[インタビュー名\]/g, title || '')
                                             .replace(/\[ターゲット\]/g, targetAudience || '')
                                             .replace(/\[目的\]/g, purpose || '')

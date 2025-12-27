@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { getFirebaseAuth, getFirebaseDb, getFirebaseStorage } from '@/src/lib/firebase'
+import { getFirebaseDb, getFirebaseStorage } from '@/src/lib/firebase'
 import { collection, query, where, getDocs, doc, orderBy, updateDoc, Timestamp } from 'firebase/firestore'
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { KnowledgeBase } from '@/src/types/index'
@@ -98,11 +98,7 @@ export default function UserKBPage() {
             setUploading(true)
             setUploadProgress(0)
 
-            const firebaseAuth = getFirebaseAuth()
-            const currentUser = firebaseAuth.currentUser
-            if (!currentUser) throw new Error('ログインが必要です')
-
-            const idToken = await currentUser.getIdToken()
+            if (!user) throw new Error('ログインが必要です')
             const timestamp = Date.now()
             const encodedFileName = encodeURIComponent(file.name)
             const firebaseStorage = getFirebaseStorage()
@@ -131,8 +127,7 @@ export default function UserKBPage() {
                         const response = await fetch('/api/knowledge-base/create', {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${idToken}`
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
                                 type: 'user',

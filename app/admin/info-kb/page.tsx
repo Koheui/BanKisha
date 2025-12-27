@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { getFirebaseAuth, getFirebaseDb, getFirebaseStorage } from '@/src/lib/firebase'
+import { getFirebaseDb, getFirebaseStorage } from '@/src/lib/firebase'
 import { collection, query, where, getDocs, deleteDoc, doc, orderBy, updateDoc } from 'firebase/firestore'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { KnowledgeBase } from '@/src/types'
@@ -102,13 +102,9 @@ export default function InfoKBPage() {
       setUploading(true)
       setUploadProgress(0)
 
-      const firebaseAuth = getFirebaseAuth()
-      const currentUser = firebaseAuth.currentUser
-      if (!currentUser) {
+      if (!user) {
         throw new Error('ログインが必要です')
       }
-
-      const idToken = await currentUser.getIdToken()
 
       // ファイル名をエンコード
       const timestamp = Date.now()
@@ -149,8 +145,7 @@ export default function InfoKBPage() {
             const response = await fetch('/api/knowledge-base/create', {
               method: 'POST',
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify({
                 type: 'info',
@@ -241,13 +236,10 @@ export default function InfoKBPage() {
     try {
       setRegenerating(true)
 
-      const firebaseAuth = getFirebaseAuth()
-      const idToken = await firebaseAuth.currentUser?.getIdToken()
       const response = await fetch('/api/knowledge-base/regenerate', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           knowledgeBaseId: kb.id,
