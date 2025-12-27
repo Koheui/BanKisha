@@ -50,7 +50,7 @@ function PublishArticleContent() {
     // 未ログインの場合は登録画面にリダイレクト
     if (!authLoading && !user && articleId) {
       const currentPath = `/media/publish/${articleId}`
-      router.push(`/signup?redirect=${encodeURIComponent(currentPath)}`)
+      router.push(`/sign-up?redirect=${encodeURIComponent(currentPath)}`)
     }
   }, [user, authLoading, articleId, router])
 

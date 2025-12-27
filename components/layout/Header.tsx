@@ -24,7 +24,7 @@ export function Header() {
     try {
       await logout()
       setMobileMenuOpen(false)
-      router.push('/login')
+      router.push('/sign-in')
     } catch (error) {
       console.error('Logout error in Header:', error)
     }
@@ -94,12 +94,12 @@ export function Header() {
               </div>
             ) : (
               <div className="flex items-center space-x-2">
-                <Link href="/login">
+                <Link href="/sign-in">
                   <Button variant="ghost">
                     ログイン
                   </Button>
                 </Link>
-                <Link href="/signup">
+                <Link href="/sign-up">
                   <Button variant="gradient">
                     新規登録
                   </Button>
@@ -168,12 +168,12 @@ export function Header() {
 
               {!user && !loading && (
                 <div className="flex flex-col space-y-2">
-                  <Link href="/login">
+                  <Link href="/sign-in">
                     <Button variant="outline" className="w-full">
                       ログイン
                     </Button>
                   </Link>
-                  <Link href="/signup">
+                  <Link href="/sign-up">
                     <Button variant="gradient" className="w-full">
                       新規登録
                     </Button>

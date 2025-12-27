@@ -96,7 +96,7 @@ export default function InterviewerSettingsPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login')
+      router.push('/sign-in')
     } else if (!loading && user) {
       loadInterviewers()
     }

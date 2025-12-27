@@ -38,7 +38,7 @@ export default function InterviewsPage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/login')
+      router.push('/sign-in')
     } else if (user?.companyId) {
       loadInterviews()
     }

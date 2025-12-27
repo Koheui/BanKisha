@@ -36,7 +36,7 @@ export default function UserKBPage() {
     // ログイン確認
     useEffect(() => {
         if (!loading && !user) {
-            router.push('/login')
+            router.push('/sign-in')
         }
     }, [user, loading, router])
 

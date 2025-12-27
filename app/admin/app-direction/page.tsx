@@ -18,7 +18,7 @@ export default function AppDirectionPage() {
   // superAdminのみアクセス可能
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login')
+      router.push('/sign-in')
     } else if (!loading && user && user.role !== 'superAdmin') {
       router.push('/dashboard')
     }
