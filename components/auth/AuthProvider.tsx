@@ -30,7 +30,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser()
-  const { signOut } = useAuth()
+  const { signOut } = useClerkAuth()
   const [user, setUser] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
 
