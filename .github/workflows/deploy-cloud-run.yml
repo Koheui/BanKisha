@@ -70,7 +70,7 @@ jobs:
             --platform managed \
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
-            --set-env-vars="GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},FIREBASE_CLIENT_EMAIL=${{ secrets.FIREBASE_CLIENT_EMAIL }},FIREBASE_PRIVATE_KEY=${{ secrets.FIREBASE_PRIVATE_KEY }},FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}"
+            --set-env-vars="GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},FIREBASE_CLIENT_EMAIL=${{ secrets.FIREBASE_CLIENT_EMAIL }},FIREBASE_PRIVATE_KEY=${{ secrets.FIREBASE_PRIVATE_KEY }},FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }},NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }},CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}"
 
       - name: Deploy to Firebase Hosting
         uses: w9jds/firebase-action@master
