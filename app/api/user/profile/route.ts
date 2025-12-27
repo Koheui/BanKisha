@@ -14,10 +14,18 @@ export async function GET() {
     const db = admin.firestore()
     const userDoc = await db.collection('users').doc(userId).get()
 
+    const debugInfo = {
+      userId,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'undefined',
+      exists: userDoc.exists,
+      envHasKey: !!process.env.FIREBASE_PRIVATE_KEY,
+    }
+
     if (!userDoc.exists) {
       return NextResponse.json({
         uid: userId,
-        role: 'user'
+        role: 'user',
+        _debug: debugInfo
       })
     }
 
@@ -25,6 +33,7 @@ export async function GET() {
     return NextResponse.json({
       uid: userId,
       ...userData,
+      _debug: debugInfo,
       createdAt: userData?.createdAt?.toDate ? userData.createdAt.toDate().toISOString() : userData?.createdAt,
       updatedAt: userData?.updatedAt?.toDate ? userData.updatedAt.toDate().toISOString() : userData?.updatedAt,
     })
